@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, User, Clock, Bot, UserCheck } from "lucide-react";
+import { Search, User, Clock, Bot, UserCheck, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -22,6 +22,8 @@ const mockMessages = [
 const DashboardConversations = () => {
   const [selectedId, setSelectedId] = useState("1");
   const [search, setSearch] = useState("");
+  const [humanMessage, setHumanMessage] = useState("");
+  const [isHumanMode, setIsHumanMode] = useState(false);
 
   return (
     <DashboardLayout>
@@ -79,8 +81,13 @@ const DashboardConversations = () => {
                 <p className="flex items-center gap-1 text-xs text-muted-foreground"><Bot className="h-3 w-3" /> IA atendendo</p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              <UserCheck className="mr-2 h-4 w-4" /> Assumir
+            <Button
+              variant={isHumanMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsHumanMode(!isHumanMode)}
+              className={isHumanMode ? "bg-hero-gradient text-primary-foreground" : ""}
+            >
+              <UserCheck className="mr-2 h-4 w-4" /> {isHumanMode ? "IA Pausada" : "Assumir"}
             </Button>
           </div>
 
@@ -106,6 +113,29 @@ const DashboardConversations = () => {
               </motion.div>
             ))}
           </div>
+
+          {/* Human message input */}
+          {isHumanMode && (
+            <div className="border-t border-border p-4">
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  if (humanMessage.trim()) setHumanMessage("");
+                }}
+                className="flex gap-2"
+              >
+                <Input
+                  placeholder="Digite sua mensagem..."
+                  value={humanMessage}
+                  onChange={e => setHumanMessage(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="submit" size="sm" className="bg-hero-gradient text-primary-foreground">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>
