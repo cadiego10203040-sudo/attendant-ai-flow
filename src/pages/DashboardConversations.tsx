@@ -1,139 +1,176 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Search, User, Clock, Bot, UserCheck, Send } from "lucide-react";
+import { Search, User, Send, UserCheck, Bot, X as XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useCompany } from "@/hooks/useCompany";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
-const mockConversations = [
-  { id: "1", phone: "+55 11 98765-4321", name: "João Silva", lastMessage: "Quero saber sobre o plano Pro", time: "2 min", status: "ai", unread: true },
-  { id: "2", phone: "+55 21 91234-5678", name: "Maria Santos", lastMessage: "Pagamento confirmado! 🎉", time: "15 min", status: "ai", unread: false },
-  { id: "3", phone: "+55 31 99876-1234", name: "Pedro Oliveira", lastMessage: "Preciso falar com um atendente", time: "1h", status: "human", unread: true },
-  { id: "4", phone: "+55 41 97654-3210", name: "Ana Costa", lastMessage: "Obrigada!", time: "3h", status: "ai", unread: false },
-];
-
-const mockMessages = [
-  { id: "1", role: "customer" as const, text: "Oi, tudo bem? Quero saber sobre o plano Pro", time: "14:30" },
-  { id: "2", role: "ai" as const, text: "Olá João! 😊 O Plano Pro inclui atendimento ilimitado, dashboard completo e integração com pagamentos por R$ 197/mês. Quer que eu envie o link de checkout?", time: "14:30" },
-  { id: "3", role: "customer" as const, text: "Sim! Quero pagar por PIX", time: "14:32" },
-  { id: "4", role: "ai" as const, text: "Perfeito! Aqui está seu link PIX: 🔗 pague.me/plano-pro-pix\n\nAssim que o pagamento for confirmado, eu aviso! 🎉", time: "14:32" },
-];
+type Conversation = { id: string; customer_phone: string; customer_name: string; status: string; last_message: string; last_message_at: string; };
+type Message = { id: string; role: string; content: string; created_at: string; };
 
 const DashboardConversations = () => {
-  const [selectedId, setSelectedId] = useState("1");
+  const { company } = useCompany();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   const [humanMessage, setHumanMessage] = useState("");
   const [isHumanMode, setIsHumanMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchConversations = useCallback(async () => {
+    if (!company) return;
+    let query = supabase.from("conversations").select("*").eq("company_id", company.id).order("last_message_at", { ascending: false });
+    if (filter !== "all") query = query.eq("status", filter);
+    const { data } = await query;
+    setConversations((data as Conversation[]) || []);
+    setLoading(false);
+  }, [company, filter]);
+
+  useEffect(() => { fetchConversations(); }, [fetchConversations]);
+
+  useEffect(() => {
+    if (!company) return;
+    const channel = supabase.channel("conversations-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchConversations())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [company, fetchConversations]);
+
+  const fetchMessages = useCallback(async (convId: string) => {
+    const { data } = await supabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: true });
+    setMessages((data as Message[]) || []);
+  }, []);
+
+  useEffect(() => { if (selectedId) fetchMessages(selectedId); }, [selectedId, fetchMessages]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const channel = supabase.channel("messages-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, () => fetchMessages(selectedId))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedId, fetchMessages]);
+
+  const handleAssume = async () => {
+    if (!selectedId) return;
+    const newMode = !isHumanMode;
+    setIsHumanMode(newMode);
+    await supabase.from("conversations").update({ status: newMode ? "waiting_human" : "open" }).eq("id", selectedId);
+    fetchConversations();
+  };
+
+  const handleClose = async () => {
+    if (!selectedId) return;
+    await supabase.from("conversations").update({ status: "closed" }).eq("id", selectedId);
+    setSelectedId(null);
+    fetchConversations();
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!humanMessage.trim() || !selectedId) return;
+    await supabase.from("messages").insert({ conversation_id: selectedId, role: "assistant", content: humanMessage });
+    await supabase.from("conversations").update({ last_message: humanMessage, last_message_at: new Date().toISOString() }).eq("id", selectedId);
+    setHumanMessage("");
+    fetchMessages(selectedId);
+  };
+
+  const selected = conversations.find(c => c.id === selectedId);
+  const filtered = conversations.filter(c =>
+    (c.customer_name || c.customer_phone).toLowerCase().includes(search.toLowerCase())
+  );
+
+  const statusBadge = (status: string) => {
+    if (status === "open") return "🟢";
+    if (status === "waiting_human") return "🟡";
+    return "⚫";
+  };
 
   return (
     <DashboardLayout>
       <div className="flex h-full flex-col lg:flex-row gap-4">
-        {/* Conversation List */}
         <div className="w-full lg:w-80 shrink-0 rounded-xl border border-border bg-card">
           <div className="border-b border-border p-4">
             <h2 className="mb-3 font-heading text-lg font-bold text-card-foreground">Conversas</h2>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+              <Input placeholder="Buscar por nome ou número..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <div className="mt-2 flex gap-1">
+              {["all", "open", "waiting_human", "closed"].map(f => (
+                <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+                  {f === "all" ? "Todas" : f === "open" ? "Abertas" : f === "waiting_human" ? "Aguardando" : "Fechadas"}
+                </button>
+              ))}
             </div>
           </div>
           <div className="max-h-[60vh] overflow-auto">
-            {mockConversations.map(c => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedId(c.id)}
-                className={`flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors ${
-                  selectedId === c.id ? "bg-accent" : "hover:bg-muted"
-                }`}
-              >
+            {loading ? (
+              <p className="p-4 text-sm text-muted-foreground">Carregando...</p>
+            ) : filtered.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">Nenhuma conversa encontrada</p>
+            ) : filtered.map(c => (
+              <button key={c.id} onClick={() => { setSelectedId(c.id); setIsHumanMode(c.status === "waiting_human"); }} className={`flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors ${selectedId === c.id ? "bg-accent" : "hover:bg-muted"}`}>
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <User className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-card-foreground">{c.name}</span>
-                    <span className="text-xs text-muted-foreground">{c.time}</span>
+                    <span className="text-sm font-medium text-card-foreground">{c.customer_name || c.customer_phone}</span>
+                    <span className="text-xs text-muted-foreground">{statusBadge(c.status)}</span>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.lastMessage}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  {c.unread && <div className="h-2 w-2 rounded-full bg-primary" />}
-                  {c.status === "ai" ? (
-                    <Bot className="h-3.5 w-3.5 text-primary" />
-                  ) : (
-                    <UserCheck className="h-3.5 w-3.5 text-warning" />
-                  )}
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.last_message || "Sem mensagens"}</p>
                 </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Chat Area */}
         <div className="flex flex-1 flex-col rounded-xl border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <User className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-card-foreground">João Silva</p>
-                <p className="flex items-center gap-1 text-xs text-muted-foreground"><Bot className="h-3 w-3" /> IA atendendo</p>
-              </div>
-            </div>
-            <Button
-              variant={isHumanMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsHumanMode(!isHumanMode)}
-              className={isHumanMode ? "bg-hero-gradient text-primary-foreground" : ""}
-            >
-              <UserCheck className="mr-2 h-4 w-4" /> {isHumanMode ? "IA Pausada" : "Assumir"}
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-auto p-4 space-y-3">
-            {mockMessages.map((m, i) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className={`flex ${m.role === "customer" ? "justify-end" : "justify-start"}`}
-              >
-                <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
-                  m.role === "customer"
-                    ? "rounded-br-sm bg-primary text-primary-foreground"
-                    : "rounded-bl-sm bg-secondary text-secondary-foreground"
-                }`}>
-                  <p className="whitespace-pre-wrap">{m.text}</p>
-                  <p className={`mt-1 text-[10px] ${m.role === "customer" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                    {m.time}
-                  </p>
+          {selected ? (
+            <>
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><User className="h-4 w-4" /></div>
+                  <div>
+                    <p className="text-sm font-medium text-card-foreground">{selected.customer_name || selected.customer_phone}</p>
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">{isHumanMode ? <><UserCheck className="h-3 w-3" /> Humano atendendo</> : <><Bot className="h-3 w-3" /> IA atendendo</>}</p>
+                  </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Human message input */}
-          {isHumanMode && (
-            <div className="border-t border-border p-4">
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  if (humanMessage.trim()) setHumanMessage("");
-                }}
-                className="flex gap-2"
-              >
-                <Input
-                  placeholder="Digite sua mensagem..."
-                  value={humanMessage}
-                  onChange={e => setHumanMessage(e.target.value)}
-                  className="flex-1"
-                />
-                <Button type="submit" size="sm" className="bg-hero-gradient text-primary-foreground">
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+                <div className="flex gap-2">
+                  <Button variant={isHumanMode ? "default" : "outline"} size="sm" onClick={handleAssume} className={isHumanMode ? "bg-hero-gradient text-primary-foreground" : ""}>
+                    <UserCheck className="mr-2 h-4 w-4" /> {isHumanMode ? "IA Pausada" : "Assumir"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleClose}><XIcon className="mr-2 h-4 w-4" /> Fechar</Button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 space-y-3">
+                {messages.map((m, i) => (
+                  <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${m.role === "user" ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-secondary text-secondary-foreground"}`}>
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      <p className={`mt-1 text-[10px] ${m.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>{new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              {isHumanMode && (
+                <div className="border-t border-border p-4">
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <Input placeholder="Digite sua mensagem..." value={humanMessage} onChange={e => setHumanMessage(e.target.value)} className="flex-1" />
+                    <Button type="submit" size="sm" className="bg-hero-gradient text-primary-foreground"><Send className="h-4 w-4" /></Button>
+                  </form>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-muted-foreground">
+              <p>Selecione uma conversa para visualizar</p>
             </div>
           )}
         </div>

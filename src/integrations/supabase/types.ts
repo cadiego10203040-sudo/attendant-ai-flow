@@ -14,7 +14,402 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      broadcasts: {
+        Row: {
+          audience_filter: Json | null
+          company_id: string
+          created_at: string
+          id: string
+          message: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          title: string
+          total_sent: number | null
+        }
+        Insert: {
+          audience_filter?: Json | null
+          company_id: string
+          created_at?: string
+          id?: string
+          message?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string
+          total_sent?: number | null
+        }
+        Update: {
+          audience_filter?: Json | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string
+          total_sent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcasts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          address: string | null
+          ai_instructions: string | null
+          business_hours: Json | null
+          created_at: string
+          escalation_rules: string | null
+          id: string
+          language: string | null
+          logo_url: string | null
+          mp_key: string | null
+          name: string
+          objections: string | null
+          openai_key: string | null
+          segment: string | null
+          updated_at: string
+          user_id: string
+          whatsapp_phone_id: string | null
+          whatsapp_token: string | null
+          whatsapp_verify_token: string | null
+        }
+        Insert: {
+          address?: string | null
+          ai_instructions?: string | null
+          business_hours?: Json | null
+          created_at?: string
+          escalation_rules?: string | null
+          id?: string
+          language?: string | null
+          logo_url?: string | null
+          mp_key?: string | null
+          name?: string
+          objections?: string | null
+          openai_key?: string | null
+          segment?: string | null
+          updated_at?: string
+          user_id: string
+          whatsapp_phone_id?: string | null
+          whatsapp_token?: string | null
+          whatsapp_verify_token?: string | null
+        }
+        Update: {
+          address?: string | null
+          ai_instructions?: string | null
+          business_hours?: Json | null
+          created_at?: string
+          escalation_rules?: string | null
+          id?: string
+          language?: string | null
+          logo_url?: string | null
+          mp_key?: string | null
+          name?: string
+          objections?: string | null
+          openai_key?: string | null
+          segment?: string | null
+          updated_at?: string
+          user_id?: string
+          whatsapp_phone_id?: string | null
+          whatsapp_token?: string | null
+          whatsapp_verify_token?: string | null
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_name: string | null
+          customer_phone: string
+          id: string
+          last_message: string | null
+          last_message_at: string | null
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flows: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          executions: number | null
+          id: string
+          name: string
+          steps: Json | null
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          executions?: number | null
+          id?: string
+          name?: string
+          steps?: Json | null
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          executions?: number | null
+          id?: string
+          name?: string
+          steps?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flows_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      labels: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labels_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          content?: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          amount: number
+          company_id: string
+          conversation_id: string | null
+          created_at: string
+          customer_name: string | null
+          customer_phone: string | null
+          id: string
+          link_sent_at: string | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_status: string
+          product_id: string | null
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          conversation_id?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          link_sent_at?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          product_id?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          conversation_id?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          link_sent_at?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          product_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          active: boolean
+          card_link: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          pix_link: string | null
+          price: number | null
+        }
+        Insert: {
+          active?: boolean
+          card_link?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          pix_link?: string | null
+          price?: number | null
+        }
+        Update: {
+          active?: boolean
+          card_link?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          pix_link?: string | null
+          price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_replies: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          message: string
+          shortcut: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          message?: string
+          shortcut?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          shortcut?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_replies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
