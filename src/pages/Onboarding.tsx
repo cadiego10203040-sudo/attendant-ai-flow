@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Package, Brain, MessageSquare, ArrowRight, ArrowLeft, Plus, Trash2, CheckCircle2, Loader2 } from "lucide-react";
+import { Building2, Package, Brain, MessageSquare, ArrowRight, ArrowLeft, Plus, Trash2, CheckCircle2, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,8 @@ const Onboarding = () => {
   const [companyName, setCompanyName] = useState("");
   const [segment, setSegment] = useState("");
   const [language, setLanguage] = useState("");
+  const [logo, setLogo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Step 2
   const [products, setProducts] = useState<Product[]>([
@@ -159,6 +161,35 @@ const Onboarding = () => {
                           <SelectItem value="technical">Técnica</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Logo da Empresa</Label>
+                      <div
+                        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-6 transition-colors hover:border-primary/50"
+                        onClick={() => document.getElementById("logo-upload")?.click()}
+                      >
+                        {logoPreview ? (
+                          <img src={logoPreview} alt="Logo" className="h-20 w-20 rounded-xl object-cover" />
+                        ) : (
+                          <>
+                            <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Clique para enviar sua logo</span>
+                          </>
+                        )}
+                        <input
+                          id="logo-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setLogo(file);
+                              setLogoPreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
