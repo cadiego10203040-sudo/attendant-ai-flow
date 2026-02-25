@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const steps = [
   { icon: Building2, label: "Empresa" },
@@ -19,62 +22,115 @@ type Product = { id: string; name: string; description: string; price: string; l
 
 const Onboarding = () => {
   const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Step 1
   const [companyName, setCompanyName] = useState("");
   const [segment, setSegment] = useState("");
   const [language, setLanguage] = useState("");
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  // Step 2
   const [products, setProducts] = useState<Product[]>([
     { id: "1", name: "", description: "", price: "", linkCard: "", linkPix: "" },
   ]);
 
-  // Step 3
   const [aiPrompt, setAiPrompt] = useState("");
   const [objections, setObjections] = useState("");
   const [hours, setHours] = useState("Seg-Sex 8h-18h");
   const [escalation, setEscalation] = useState("");
 
-  // Step 4
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<null | boolean>(null);
 
-  const addProduct = () => {
-    setProducts(p => [...p, { id: crypto.randomUUID(), name: "", description: "", price: "", linkCard: "", linkPix: "" }]);
-  };
+  const addProduct = () => setProducts(p => [...p, { id: crypto.randomUUID(), name: "", description: "", price: "", linkCard: "", linkPix: "" }]);
+  const removeProduct = (id: string) => setProducts(p => p.filter(x => x.id !== id));
+  const updateProduct = (id: string, field: keyof Product, value: string) => setProducts(p => p.map(x => x.id === id ? { ...x, [field]: value } : x));
 
-  const removeProduct = (id: string) => {
-    setProducts(p => p.filter(x => x.id !== id));
-  };
-
-  const updateProduct = (id: string, field: keyof Product, value: string) => {
-    setProducts(p => p.map(x => x.id === id ? { ...x, [field]: value } : x));
-  };
-
-  const testConnection = () => {
+  const testConnection = async () => {
+    if (!phoneNumberId || !accessToken) return;
     setTesting(true);
-    setTimeout(() => {
-      setTesting(false);
-      setTestResult(true);
-    }, 2000);
+    try {
+      const res = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setTestResult(res.ok);
+      if (!res.ok) toast({ title: "Erro na conexão", description: "Verifique suas credenciais", variant: "destructive" });
+    } catch {
+      setTestResult(false);
+      toast({ title: "Erro na conexão", description: "Não foi possível conectar", variant: "destructive" });
+    }
+    setTesting(false);
   };
 
-  const finish = () => {
-    navigate("/dashboard");
+  const finish = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      let logoUrl = "";
+      if (logo) {
+        const ext = logo.name.split(".").pop();
+        const path = `${user.id}/logo.${ext}`;
+        await supabase.storage.from("logos").upload(path, logo, { upsert: true });
+        const { data: urlData } = supabase.storage.from("logos").getPublicUrl(path);
+        logoUrl = urlData.publicUrl;
+      }
+
+      const { data: company, error } = await supabase.from("companies").insert({
+        user_id: user.id,
+        name: companyName,
+        segment,
+        language,
+        logo_url: logoUrl,
+        business_hours: hours,
+        ai_instructions: aiPrompt,
+        objections,
+        escalation_rules: escalation,
+        whatsapp_phone_id: phoneNumberId,
+        whatsapp_token: accessToken,
+        whatsapp_verify_token: verifyToken,
+      }).select().single();
+
+      if (error) throw error;
+
+      const validProducts = products.filter(p => p.name.trim());
+      if (validProducts.length > 0 && company) {
+        await supabase.from("products").insert(
+          validProducts.map(p => ({
+            company_id: company.id,
+            name: p.name,
+            description: p.description,
+            price: parseFloat(p.price) || 0,
+            card_link: p.linkCard,
+            pix_link: p.linkPix,
+          }))
+        );
+      }
+
+      // Create default flows
+      if (company) {
+        await supabase.from("flows").insert([
+          { company_id: company.id, name: "Boas Vindas", active: true, steps: [{ message: "Olá! Bem-vindo! Como posso ajudar?" }] },
+          { company_id: company.id, name: "Vendas", active: true, steps: [{ message: "Quer conhecer nossos produtos?" }] },
+        ]);
+      }
+
+      toast({ title: "Configuração concluída!", description: "Sua empresa foi cadastrada com sucesso." });
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
   };
 
-  const webhookUrl = `https://seu-projeto.supabase.co/functions/v1/whatsapp-webhook`;
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
       <div className="border-b border-border bg-card px-6 py-4">
         <div className="container mx-auto flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-hero-gradient">
@@ -85,7 +141,6 @@ const Onboarding = () => {
         </div>
       </div>
 
-      {/* Stepper */}
       <div className="border-b border-border bg-card px-6 py-4">
         <div className="container mx-auto flex items-center justify-center gap-2 md:gap-4">
           {steps.map((s, i) => (
@@ -93,40 +148,22 @@ const Onboarding = () => {
               <button
                 onClick={() => i < step && setStep(i)}
                 className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                  i === step
-                    ? "bg-primary text-primary-foreground"
-                    : i < step
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-muted text-muted-foreground"
+                  i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
                 }`}
               >
-                {i < step ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : (
-                  <s.icon className="h-4 w-4" />
-                )}
+                {i < step ? <CheckCircle2 className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
                 <span className="hidden sm:inline">{s.label}</span>
               </button>
-              {i < steps.length - 1 && (
-                <div className={`hidden h-px w-8 md:block ${i < step ? "bg-primary" : "bg-border"}`} />
-              )}
+              {i < steps.length - 1 && <div className={`hidden h-px w-8 md:block ${i < step ? "bg-primary" : "bg-border"}`} />}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Content */}
       <div className="container mx-auto flex-1 px-6 py-10">
         <div className="mx-auto max-w-2xl">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Step 1: Company */}
+            <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
               {step === 0 && (
                 <div className="space-y-6">
                   <div>
@@ -164,10 +201,7 @@ const Onboarding = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Logo da Empresa</Label>
-                      <div
-                        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-6 transition-colors hover:border-primary/50"
-                        onClick={() => document.getElementById("logo-upload")?.click()}
-                      >
+                      <div className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-6 transition-colors hover:border-primary/50" onClick={() => document.getElementById("logo-upload")?.click()}>
                         {logoPreview ? (
                           <img src={logoPreview} alt="Logo" className="h-20 w-20 rounded-xl object-cover" />
                         ) : (
@@ -176,26 +210,13 @@ const Onboarding = () => {
                             <span className="text-sm text-muted-foreground">Clique para enviar sua logo</span>
                           </>
                         )}
-                        <input
-                          id="logo-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setLogo(file);
-                              setLogoPreview(URL.createObjectURL(file));
-                            }
-                          }}
-                        />
+                        <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) { setLogo(file); setLogoPreview(URL.createObjectURL(file)); } }} />
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Step 2: Products */}
               {step === 1 && (
                 <div className="space-y-6">
                   <div>
@@ -207,11 +228,7 @@ const Onboarding = () => {
                       <div key={p.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-foreground">Produto {i + 1}</span>
-                          {products.length > 1 && (
-                            <Button variant="ghost" size="sm" onClick={() => removeProduct(p.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
+                          {products.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeProduct(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                           <Input placeholder="Nome" value={p.name} onChange={e => updateProduct(p.id, "name", e.target.value)} />
@@ -224,14 +241,11 @@ const Onboarding = () => {
                         </div>
                       </div>
                     ))}
-                    <Button variant="outline" onClick={addProduct} className="w-full">
-                      <Plus className="mr-2 h-4 w-4" /> Adicionar Produto
-                    </Button>
+                    <Button variant="outline" onClick={addProduct} className="w-full"><Plus className="mr-2 h-4 w-4" /> Adicionar Produto</Button>
                   </div>
                 </div>
               )}
 
-              {/* Step 3: AI Config */}
               {step === 2 && (
                 <div className="space-y-6">
                   <div>
@@ -239,27 +253,14 @@ const Onboarding = () => {
                     <p className="mt-1 text-muted-foreground">Personalize como sua IA atende</p>
                   </div>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Instruções para a IA</Label>
-                      <Textarea rows={5} placeholder="Ex: Sempre cumprimente o cliente, ofereça os produtos..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Objeções comuns e respostas</Label>
-                      <Textarea rows={3} placeholder="Ex: 'É caro' → 'Nosso produto tem o melhor custo-benefício...'" value={objections} onChange={e => setObjections(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Horário de Atendimento</Label>
-                      <Input placeholder="Ex: Seg-Sex 8h-18h" value={hours} onChange={e => setHours(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Quando escalar para humano</Label>
-                      <Textarea rows={2} placeholder="Ex: Quando o cliente pedir para falar com um atendente..." value={escalation} onChange={e => setEscalation(e.target.value)} />
-                    </div>
+                    <div className="space-y-2"><Label>Instruções para a IA</Label><Textarea rows={5} placeholder="Ex: Sempre cumprimente o cliente, ofereça os produtos..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Objeções comuns e respostas</Label><Textarea rows={3} placeholder="Ex: 'É caro' → 'Nosso produto tem o melhor custo-benefício...'" value={objections} onChange={e => setObjections(e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Horário de Atendimento</Label><Input placeholder="Ex: Seg-Sex 8h-18h" value={hours} onChange={e => setHours(e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Quando escalar para humano</Label><Textarea rows={2} placeholder="Ex: Quando o cliente pedir para falar com um atendente..." value={escalation} onChange={e => setEscalation(e.target.value)} /></div>
                   </div>
                 </div>
               )}
 
-              {/* Step 4: WhatsApp */}
               {step === 3 && (
                 <div className="space-y-6">
                   <div>
@@ -267,39 +268,15 @@ const Onboarding = () => {
                     <p className="mt-1 text-muted-foreground">Vincule sua conta Meta Business</p>
                   </div>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Phone Number ID</Label>
-                      <Input placeholder="Obtido no Meta for Developers" value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Access Token (permanente)</Label>
-                      <Input type="password" placeholder="Token do sistema" value={accessToken} onChange={e => setAccessToken(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Verify Token</Label>
-                      <Input placeholder="String para verificar o webhook" value={verifyToken} onChange={e => setVerifyToken(e.target.value)} />
-                    </div>
-
+                    <div className="space-y-2"><Label>Phone Number ID</Label><Input placeholder="Obtido no Meta for Developers" value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Access Token (permanente)</Label><Input type="password" placeholder="Token do sistema" value={accessToken} onChange={e => setAccessToken(e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Verify Token</Label><Input placeholder="String para verificar o webhook" value={verifyToken} onChange={e => setVerifyToken(e.target.value)} /></div>
                     <div className="rounded-xl border border-border bg-muted/50 p-4">
                       <p className="mb-2 text-sm font-medium text-foreground">URL do Webhook (copie e cole no Meta):</p>
-                      <code className="block rounded-lg bg-card px-3 py-2 text-xs text-foreground break-all">
-                        {webhookUrl}
-                      </code>
+                      <code className="block rounded-lg bg-card px-3 py-2 text-xs text-foreground break-all">{webhookUrl}</code>
                     </div>
-
-                    <Button
-                      variant="outline"
-                      onClick={testConnection}
-                      disabled={testing || !phoneNumberId || !accessToken}
-                      className="w-full"
-                    >
-                      {testing ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testando...</>
-                      ) : testResult === true ? (
-                        <><CheckCircle2 className="mr-2 h-4 w-4 text-primary" /> Conexão OK!</>
-                      ) : (
-                        "Testar Conexão"
-                      )}
+                    <Button variant="outline" onClick={testConnection} disabled={testing || !phoneNumberId || !accessToken} className="w-full">
+                      {testing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testando...</> : testResult === true ? <><CheckCircle2 className="mr-2 h-4 w-4 text-primary" /> Conexão OK!</> : "Testar Conexão"}
                     </Button>
                   </div>
                 </div>
@@ -307,22 +284,15 @@ const Onboarding = () => {
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation */}
           <div className="mt-10 flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => setStep(s => s - 1)}
-              disabled={step === 0}
-            >
+            <Button variant="ghost" onClick={() => setStep(s => s - 1)} disabled={step === 0}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
             </Button>
             {step < 3 ? (
-              <Button onClick={() => setStep(s => s + 1)} className="bg-hero-gradient text-primary-foreground hover:opacity-90">
-                Próximo <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <Button onClick={() => setStep(s => s + 1)} className="bg-hero-gradient text-primary-foreground hover:opacity-90">Próximo <ArrowRight className="ml-2 h-4 w-4" /></Button>
             ) : (
-              <Button onClick={finish} className="bg-hero-gradient text-primary-foreground hover:opacity-90">
-                Finalizar <CheckCircle2 className="ml-2 h-4 w-4" />
+              <Button onClick={finish} disabled={saving} className="bg-hero-gradient text-primary-foreground hover:opacity-90">
+                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <>Finalizar <CheckCircle2 className="ml-2 h-4 w-4" /></>}
               </Button>
             )}
           </div>
