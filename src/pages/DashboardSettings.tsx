@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 type Product = { id: string; name: string; description: string; price: string; card_link: string; pix_link: string; isNew?: boolean };
 
 const DashboardSettings = () => {
-  const { company, refetch } = useCompany();
+  const { company, refetch, ensureCompany } = useCompany();
   const { status, execute } = useSave();
 
   const [name, setName] = useState("");
@@ -44,13 +44,13 @@ const DashboardSettings = () => {
   }, [company]);
 
   const handleSave = () => execute(async () => {
-    if (!company) throw new Error("Empresa não encontrada");
-    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours }).eq("id", company.id);
+    const c = await ensureCompany();
+    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours }).eq("id", c.id);
     if (error) throw error;
 
     for (const p of products) {
       if (p.isNew) {
-        const { error: e } = await supabase.from("products").insert({ company_id: company.id, name: p.name, description: p.description, price: parseFloat(p.price) || 0, card_link: p.card_link, pix_link: p.pix_link });
+        const { error: e } = await supabase.from("products").insert({ company_id: c.id, name: p.name, description: p.description, price: parseFloat(p.price) || 0, card_link: p.card_link, pix_link: p.pix_link });
         if (e) throw e;
       } else {
         const { error: e } = await supabase.from("products").update({ name: p.name, description: p.description, price: parseFloat(p.price) || 0, card_link: p.card_link, pix_link: p.pix_link }).eq("id", p.id);

@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const DashboardConnections = () => {
-  const { company, refetch } = useCompany();
+  const { company, refetch, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [phoneId, setPhoneId] = useState("");
   const [token, setToken] = useState("");
@@ -36,13 +36,13 @@ const DashboardConnections = () => {
     if (!webhookUrl.trim() || !webhookUrl.startsWith("https://")) { toast({ title: "URL do Webhook inválida", description: "Deve começar com https://", variant: "destructive" }); return; }
 
     execute(async () => {
-      if (!company) throw new Error("Empresa não encontrada");
+      const c = await ensureCompany();
       const { error } = await supabase.from("companies").update({
         whatsapp_phone_id: phoneId,
         whatsapp_token: token,
         whatsapp_verify_token: verifyToken,
         webhook_url: webhookUrl,
-      }).eq("id", company.id);
+      }).eq("id", c.id);
       if (error) throw error;
       await refetch();
     }, "🔌 Configurações do WhatsApp salvas!");

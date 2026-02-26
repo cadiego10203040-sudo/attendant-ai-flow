@@ -14,7 +14,7 @@ const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domi
 type DayConfig = { enabled: boolean; start: string; end: string };
 
 const DashboardHours = () => {
-  const { company, refetch } = useCompany();
+  const { company, refetch, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [days, setDays] = useState<DayConfig[]>(DAYS.map((_, i) => ({ enabled: i < 5, start: "08:00", end: "18:00" })));
   const [offlineMessage, setOfflineMessage] = useState("Estamos fora do horário de atendimento. Retornaremos em breve!");
@@ -33,9 +33,9 @@ const DashboardHours = () => {
   };
 
   const handleSave = () => execute(async () => {
-    if (!company) throw new Error("Empresa não encontrada");
+    const c = await ensureCompany();
     const bh = JSON.stringify({ days, offlineMessage });
-    const { error } = await supabase.from("companies").update({ business_hours: bh }).eq("id", company.id);
+    const { error } = await supabase.from("companies").update({ business_hours: bh }).eq("id", c.id);
     if (error) throw error;
     await refetch();
   }, "🕐 Horários de atendimento salvos!");

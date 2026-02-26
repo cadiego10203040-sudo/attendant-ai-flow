@@ -17,7 +17,7 @@ import { toast } from "@/hooks/use-toast";
 type Flow = { id: string; name: string; active: boolean; steps: any; executions: number; };
 
 const DashboardFlows = () => {
-  const { company } = useCompany();
+  const { company, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,9 +42,10 @@ const DashboardFlows = () => {
   };
 
   const createFlow = () => {
-    if (!company || !newName.trim()) return;
+    if (!newName.trim()) return;
     execute(async () => {
-      const { error } = await supabase.from("flows").insert({ company_id: company.id, name: newName, steps: [{ message: newMessage }] });
+      const c = await ensureCompany();
+      const { error } = await supabase.from("flows").insert({ company_id: c.id, name: newName, steps: [{ message: newMessage }] });
       if (error) throw error;
       setOpen(false); setNewName(""); setNewMessage("");
       await fetchFlows();

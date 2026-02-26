@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 type LabelItem = { id: string; name: string; color: string; };
 
 const DashboardLabels = () => {
-  const { company } = useCompany();
+  const { company, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [labels, setLabels] = useState<LabelItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,13 +35,14 @@ const DashboardLabels = () => {
   useEffect(() => { fetchLabels(); }, [company]);
 
   const handleSave = () => {
-    if (!company || !name.trim()) return;
+    if (!name.trim()) return;
     execute(async () => {
+      const c = await ensureCompany();
       if (editId) {
         const { error } = await supabase.from("labels").update({ name, color }).eq("id", editId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("labels").insert({ company_id: company.id, name, color });
+        const { error } = await supabase.from("labels").insert({ company_id: c.id, name, color });
         if (error) throw error;
       }
       setOpen(false); setEditId(null); setName(""); setColor("#FF6B2B");

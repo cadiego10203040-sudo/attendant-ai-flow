@@ -26,6 +26,7 @@ type CompanyContextType = {
   company: Company | null;
   loading: boolean;
   refetch: () => Promise<void>;
+  ensureCompany: () => Promise<Company>;
 };
 
 const CompanyContext = createContext<CompanyContextType | null>(null);
@@ -47,10 +48,34 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
     setLoading(false);
   }, [user]);
 
+  const ensureCompany = useCallback(async (): Promise<Company> => {
+    if (company) return company;
+    if (!user) throw new Error("Usuário não autenticado");
+    // Check if exists
+    const { data: existing } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existing) {
+      setCompany(existing as Company);
+      return existing as Company;
+    }
+    // Auto-create
+    const { data: created, error } = await supabase
+      .from("companies")
+      .insert({ user_id: user.id, name: "Minha Empresa", language: "informal" })
+      .select("*")
+      .single();
+    if (error) throw error;
+    setCompany(created as Company);
+    return created as Company;
+  }, [company, user]);
+
   useEffect(() => { refetch(); }, [refetch]);
 
   return (
-    <CompanyContext.Provider value={{ company, loading, refetch }}>
+    <CompanyContext.Provider value={{ company, loading, refetch, ensureCompany }}>
       {children}
     </CompanyContext.Provider>
   );
