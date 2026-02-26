@@ -96,7 +96,8 @@ const Onboarding = () => {
         whatsapp_token: accessToken,
         whatsapp_verify_token: verifyToken,
         webhook_url: webhookUrl,
-      }).select().single();
+        customer_whatsapp: customerWhatsapp,
+      } as any).select().single();
 
       if (error) throw error;
 
