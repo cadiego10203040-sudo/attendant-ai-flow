@@ -17,7 +17,7 @@ import { toast } from "@/hooks/use-toast";
 type QuickReply = { id: string; shortcut: string; message: string; };
 
 const DashboardQuickReplies = () => {
-  const { company } = useCompany();
+  const { company, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [replies, setReplies] = useState<QuickReply[]>([]);
   const [loading, setLoading] = useState(true);
