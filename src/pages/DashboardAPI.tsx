@@ -24,8 +24,8 @@ const DashboardAPI = () => {
   }, [company]);
 
   const handleSave = () => execute(async () => {
-    if (!company) throw new Error("Empresa não encontrada");
-    const { error } = await supabase.from("companies").update({ openai_key: openaiKey, mp_key: mpKey }).eq("id", company.id);
+    const c = await ensureCompany();
+    const { error } = await supabase.from("companies").update({ openai_key: openaiKey, mp_key: mpKey }).eq("id", c.id);
     if (error) throw error;
     await refetch();
   }, "🔑 Chaves de API salvas com sucesso!");
