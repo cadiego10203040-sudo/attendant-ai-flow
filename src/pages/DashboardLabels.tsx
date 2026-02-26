@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import DashboardLayout from "@/components/DashboardLayout";
+import SaveButton from "@/components/SaveButton";
 import { useCompany } from "@/hooks/useCompany";
+import { useSave } from "@/hooks/useSave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -15,13 +17,13 @@ type LabelItem = { id: string; name: string; color: string; };
 
 const DashboardLabels = () => {
   const { company } = useCompany();
+  const { status, execute } = useSave();
   const [labels, setLabels] = useState<LabelItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#FF6B2B");
-  const [saving, setSaving] = useState(false);
 
   const fetchLabels = async () => {
     if (!company) return;
@@ -32,19 +34,19 @@ const DashboardLabels = () => {
 
   useEffect(() => { fetchLabels(); }, [company]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!company || !name.trim()) return;
-    setSaving(true);
-    if (editId) {
-      await supabase.from("labels").update({ name, color }).eq("id", editId);
-      toast({ title: "Etiqueta atualizada!" });
-    } else {
-      await supabase.from("labels").insert({ company_id: company.id, name, color });
-      toast({ title: "Etiqueta criada!" });
-    }
-    setOpen(false); setEditId(null); setName(""); setColor("#FF6B2B");
-    fetchLabels();
-    setSaving(false);
+    execute(async () => {
+      if (editId) {
+        const { error } = await supabase.from("labels").update({ name, color }).eq("id", editId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("labels").insert({ company_id: company.id, name, color });
+        if (error) throw error;
+      }
+      setOpen(false); setEditId(null); setName(""); setColor("#FF6B2B");
+      await fetchLabels();
+    }, "🏷️ Etiqueta salva!");
   };
 
   const handleDelete = async (id: string) => {
@@ -69,7 +71,7 @@ const DashboardLabels = () => {
               <div className="space-y-4">
                 <div className="space-y-2"><Label>Nome</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: VIP" /></div>
                 <div className="space-y-2"><Label>Cor</Label><div className="flex gap-3 items-center"><input type="color" value={color} onChange={e => setColor(e.target.value)} className="h-10 w-10 rounded-lg border border-border cursor-pointer" /><span className="text-sm text-muted-foreground">{color}</span></div></div>
-                <Button onClick={handleSave} disabled={saving} className="w-full">{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Salvar</Button>
+                <SaveButton status={status} onClick={handleSave} className="w-full" />
               </div>
             </DialogContent>
           </Dialog>

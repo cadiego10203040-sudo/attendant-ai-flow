@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
-import { Save, Loader2, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/DashboardLayout";
+import SaveButton from "@/components/SaveButton";
 import { useCompany } from "@/hooks/useCompany";
+import { useSave } from "@/hooks/useSave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const DashboardAPI = () => {
   const { company, refetch } = useCompany();
+  const { status, execute } = useSave();
   const [openaiKey, setOpenaiKey] = useState("");
   const [mpKey, setMpKey] = useState("");
-  const [saving, setSaving] = useState(false);
   const [testingOpenai, setTestingOpenai] = useState(false);
 
   useEffect(() => {
@@ -21,14 +23,12 @@ const DashboardAPI = () => {
     setMpKey(company.mp_key);
   }, [company]);
 
-  const handleSave = async () => {
-    if (!company) return;
-    setSaving(true);
-    await supabase.from("companies").update({ openai_key: openaiKey, mp_key: mpKey }).eq("id", company.id);
+  const handleSave = () => execute(async () => {
+    if (!company) throw new Error("Empresa não encontrada");
+    const { error } = await supabase.from("companies").update({ openai_key: openaiKey, mp_key: mpKey }).eq("id", company.id);
+    if (error) throw error;
     await refetch();
-    toast({ title: "Chaves salvas!" });
-    setSaving(false);
-  };
+  }, "🔑 Chaves de API salvas com sucesso!");
 
   const testOpenAI = async () => {
     if (!openaiKey) return;
@@ -47,9 +47,7 @@ const DashboardAPI = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="font-heading text-2xl font-bold text-foreground">🔑 API</h1><p className="text-muted-foreground">Configure suas chaves de integração</p></div>
-          <Button onClick={handleSave} disabled={saving} className="bg-hero-gradient text-primary-foreground hover:opacity-90">
-            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><Save className="mr-2 h-4 w-4" /> Salvar</>}
-          </Button>
+          <SaveButton status={status} onClick={handleSave} />
         </div>
 
         <div className="space-y-6">

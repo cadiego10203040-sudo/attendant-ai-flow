@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, CheckCircle2, Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,15 +8,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DashboardLayout from "@/components/DashboardLayout";
+import SaveButton from "@/components/SaveButton";
 import { useCompany } from "@/hooks/useCompany";
+import { useSave } from "@/hooks/useSave";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 
 type Product = { id: string; name: string; description: string; price: string; card_link: string; pix_link: string; isNew?: boolean };
 
 const DashboardSettings = () => {
   const { company, refetch } = useCompany();
-  const [saving, setSaving] = useState(false);
+  const { status, execute } = useSave();
 
   const [name, setName] = useState("");
   const [segment, setSegment] = useState("");
@@ -42,28 +43,23 @@ const DashboardSettings = () => {
     });
   }, [company]);
 
-  const handleSave = async () => {
-    if (!company) return;
-    setSaving(true);
-    try {
-      await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours }).eq("id", company.id);
+  const handleSave = () => execute(async () => {
+    if (!company) throw new Error("Empresa não encontrada");
+    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours }).eq("id", company.id);
+    if (error) throw error;
 
-      // Save products
-      for (const p of products) {
-        if (p.isNew) {
-          await supabase.from("products").insert({ company_id: company.id, name: p.name, description: p.description, price: parseFloat(p.price) || 0, card_link: p.card_link, pix_link: p.pix_link });
-        } else {
-          await supabase.from("products").update({ name: p.name, description: p.description, price: parseFloat(p.price) || 0, card_link: p.card_link, pix_link: p.pix_link }).eq("id", p.id);
-        }
+    for (const p of products) {
+      if (p.isNew) {
+        const { error: e } = await supabase.from("products").insert({ company_id: company.id, name: p.name, description: p.description, price: parseFloat(p.price) || 0, card_link: p.card_link, pix_link: p.pix_link });
+        if (e) throw e;
+      } else {
+        const { error: e } = await supabase.from("products").update({ name: p.name, description: p.description, price: parseFloat(p.price) || 0, card_link: p.card_link, pix_link: p.pix_link }).eq("id", p.id);
+        if (e) throw e;
       }
-
-      await refetch();
-      toast({ title: "Salvo!", description: "Configurações atualizadas com sucesso." });
-    } catch (err: any) {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
-    setSaving(false);
-  };
+
+    await refetch();
+  }, "⚙️ Configurações salvas!");
 
   const addProduct = () => setProducts(p => [...p, { id: crypto.randomUUID(), name: "", description: "", price: "", card_link: "", pix_link: "", isNew: true }]);
   const removeProduct = async (id: string) => {
@@ -78,9 +74,7 @@ const DashboardSettings = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="font-heading text-2xl font-bold text-foreground">Configurações</h1><p className="text-muted-foreground">Gerencie sua empresa e integrações</p></div>
-          <Button onClick={handleSave} disabled={saving} className="bg-hero-gradient text-primary-foreground hover:opacity-90">
-            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><Save className="mr-2 h-4 w-4" /> Salvar</>}
-          </Button>
+          <SaveButton status={status} onClick={handleSave} />
         </div>
 
         <Tabs defaultValue="company">

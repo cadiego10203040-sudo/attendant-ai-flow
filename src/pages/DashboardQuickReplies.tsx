@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import DashboardLayout from "@/components/DashboardLayout";
+import SaveButton from "@/components/SaveButton";
 import { useCompany } from "@/hooks/useCompany";
+import { useSave } from "@/hooks/useSave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -16,13 +18,13 @@ type QuickReply = { id: string; shortcut: string; message: string; };
 
 const DashboardQuickReplies = () => {
   const { company } = useCompany();
+  const { status, execute } = useSave();
   const [replies, setReplies] = useState<QuickReply[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [shortcut, setShortcut] = useState("");
   const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const fetchReplies = async () => {
     if (!company) return;
@@ -33,19 +35,19 @@ const DashboardQuickReplies = () => {
 
   useEffect(() => { fetchReplies(); }, [company]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!company || !shortcut.trim() || !message.trim()) return;
-    setSaving(true);
-    if (editId) {
-      await supabase.from("quick_replies").update({ shortcut, message }).eq("id", editId);
-      toast({ title: "Resposta rápida atualizada!" });
-    } else {
-      await supabase.from("quick_replies").insert({ company_id: company.id, shortcut, message });
-      toast({ title: "Resposta rápida criada!" });
-    }
-    setOpen(false); setEditId(null); setShortcut(""); setMessage("");
-    fetchReplies();
-    setSaving(false);
+    execute(async () => {
+      if (editId) {
+        const { error } = await supabase.from("quick_replies").update({ shortcut, message }).eq("id", editId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("quick_replies").insert({ company_id: company.id, shortcut, message });
+        if (error) throw error;
+      }
+      setOpen(false); setEditId(null); setShortcut(""); setMessage("");
+      await fetchReplies();
+    }, "💬 Resposta rápida salva!");
   };
 
   const handleDelete = async (id: string) => {
@@ -66,7 +68,7 @@ const DashboardQuickReplies = () => {
               <div className="space-y-4">
                 <div className="space-y-2"><Label>Atalho (max 50 caracteres)</Label><Input maxLength={50} value={shortcut} onChange={e => setShortcut(e.target.value)} placeholder="Ex: /preco" /></div>
                 <div className="space-y-2"><Label>Mensagem (max 1000 caracteres)</Label><Textarea rows={4} maxLength={1000} value={message} onChange={e => setMessage(e.target.value)} placeholder="Mensagem completa..." /></div>
-                <Button onClick={handleSave} disabled={saving} className="w-full">{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Salvar</Button>
+                <SaveButton status={status} onClick={handleSave} className="w-full" />
               </div>
             </DialogContent>
           </Dialog>

@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { Save, Loader2, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/DashboardLayout";
+import SaveButton from "@/components/SaveButton";
 import { useCompany } from "@/hooks/useCompany";
+import { useSave } from "@/hooks/useSave";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 
 const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
@@ -16,9 +15,9 @@ type DayConfig = { enabled: boolean; start: string; end: string };
 
 const DashboardHours = () => {
   const { company, refetch } = useCompany();
+  const { status, execute } = useSave();
   const [days, setDays] = useState<DayConfig[]>(DAYS.map((_, i) => ({ enabled: i < 5, start: "08:00", end: "18:00" })));
   const [offlineMessage, setOfflineMessage] = useState("Estamos fora do horário de atendimento. Retornaremos em breve!");
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!company) return;
@@ -33,24 +32,20 @@ const DashboardHours = () => {
     setDays(d => d.map((day, i) => i === index ? { ...day, [field]: value } : day));
   };
 
-  const handleSave = async () => {
-    if (!company) return;
-    setSaving(true);
+  const handleSave = () => execute(async () => {
+    if (!company) throw new Error("Empresa não encontrada");
     const bh = JSON.stringify({ days, offlineMessage });
-    await supabase.from("companies").update({ business_hours: bh }).eq("id", company.id);
+    const { error } = await supabase.from("companies").update({ business_hours: bh }).eq("id", company.id);
+    if (error) throw error;
     await refetch();
-    toast({ title: "Horários salvos!" });
-    setSaving(false);
-  };
+  }, "🕐 Horários de atendimento salvos!");
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="font-heading text-2xl font-bold text-foreground">🕐 Horários</h1><p className="text-muted-foreground">Configure o horário de atendimento</p></div>
-          <Button onClick={handleSave} disabled={saving} className="bg-hero-gradient text-primary-foreground hover:opacity-90">
-            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><Save className="mr-2 h-4 w-4" /> Salvar</>}
-          </Button>
+          <SaveButton status={status} onClick={handleSave} />
         </div>
 
         <div className="space-y-3">
