@@ -277,9 +277,12 @@ const Index = () => {
             </div>
             <span className="font-heading text-sm font-bold text-foreground">AtendIA</span>
           </div>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5" /> Dados seguros</span>
-            <span className="flex items-center gap-1"><Globe className="h-3.5 w-3.5" /> API Meta oficial</span>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
+            <Link to="/privacidade" className="transition-colors hover:text-foreground">Política de Privacidade</Link>
+            <span className="hidden sm:inline text-border">|</span>
+            <Link to="/termos" className="transition-colors hover:text-foreground">Termos de Uso</Link>
+            <span className="hidden sm:inline text-border">|</span>
+            <Link to="/exclusao-dados" className="transition-colors hover:text-foreground">Exclusão de Dados</Link>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 AtendIA. Todos os direitos reservados.</p>
         </div>
