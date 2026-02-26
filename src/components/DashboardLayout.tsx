@@ -90,6 +90,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
           <span className="font-heading text-lg font-bold text-foreground">AtendIA</span>
           <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-sidebar-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
           </button>
         </div>
         {/* WhatsApp status */}
@@ -105,9 +106,6 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
               WhatsApp não configurado
             </Link>
           )}
-        </div>
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         <nav className="flex-1 overflow-auto px-3 py-2 space-y-5">
