@@ -44,6 +44,7 @@ const Onboarding = () => {
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("https://yrdsfqlhdsuhxjyugepd.supabase.co/functions/v1/whatsapp-webhook");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<null | boolean>(null);
 
@@ -93,6 +94,7 @@ const Onboarding = () => {
         whatsapp_phone_id: phoneNumberId,
         whatsapp_token: accessToken,
         whatsapp_verify_token: verifyToken,
+        webhook_url: webhookUrl,
       }).select().single();
 
       if (error) throw error;
@@ -127,7 +129,7 @@ const Onboarding = () => {
     setSaving(false);
   };
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+  
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -271,9 +273,10 @@ const Onboarding = () => {
                     <div className="space-y-2"><Label>Phone Number ID</Label><Input placeholder="Obtido no Meta for Developers" value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)} /></div>
                     <div className="space-y-2"><Label>Access Token (permanente)</Label><Input type="password" placeholder="Token do sistema" value={accessToken} onChange={e => setAccessToken(e.target.value)} /></div>
                     <div className="space-y-2"><Label>Verify Token</Label><Input placeholder="String para verificar o webhook" value={verifyToken} onChange={e => setVerifyToken(e.target.value)} /></div>
-                    <div className="rounded-xl border border-border bg-muted/50 p-4">
-                      <p className="mb-2 text-sm font-medium text-foreground">URL do Webhook (copie e cole no Meta):</p>
-                      <code className="block rounded-lg bg-card px-3 py-2 text-xs text-foreground break-all">{webhookUrl}</code>
+                    <div className="space-y-2">
+                      <Label>URL do Webhook</Label>
+                      <Input placeholder="https://seu-webhook.com/endpoint" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} />
+                      <p className="text-xs text-muted-foreground">Copie e cole no Meta for Developers</p>
                     </div>
                     <Button variant="outline" onClick={testConnection} disabled={testing || !phoneNumberId || !accessToken} className="w-full">
                       {testing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testando...</> : testResult === true ? <><CheckCircle2 className="mr-2 h-4 w-4 text-primary" /> Conexão OK!</> : "Testar Conexão"}
