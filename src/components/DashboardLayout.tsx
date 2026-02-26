@@ -58,7 +58,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       title: "AUTOMAÇÃO",
       items: [
         { emoji: "⚡", label: "Fluxos de Conversa", path: "/dashboard/flows" },
-        { emoji: "🔁", label: "Automação" },
+        { emoji: "🔁", label: "Automação", path: "/dashboard/automation" },
         { emoji: "🏷️", label: "Etiquetas", path: "/dashboard/labels" },
       ],
     },
