@@ -26,6 +26,7 @@ const DashboardSettings = () => {
   const [objections, setObjections] = useState("");
   const [escalation, setEscalation] = useState("");
   const [hours, setHours] = useState("");
+  const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
