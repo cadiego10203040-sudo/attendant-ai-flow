@@ -29,6 +29,7 @@ const Onboarding = () => {
   const [companyName, setCompanyName] = useState("");
   const [segment, setSegment] = useState("");
   const [language, setLanguage] = useState("");
+  const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
