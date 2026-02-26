@@ -90,6 +90,22 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
           <span className="font-heading text-lg font-bold text-foreground">AtendIA</span>
           <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-sidebar-foreground hover:text-foreground">
+          </button>
+        </div>
+        {/* WhatsApp status */}
+        <div className="px-5 pb-3">
+          {company?.customer_whatsapp ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span>+{company.customer_whatsapp.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, "$1 ($2) $3-$4")}</span>
+            </div>
+          ) : (
+            <Link to="/dashboard/settings" className="flex items-center gap-2 text-xs text-destructive hover:underline" onClick={() => setSidebarOpen(false)}>
+              <span className="h-2 w-2 rounded-full bg-destructive" />
+              WhatsApp não configurado
+            </Link>
+          )}
+        </div>
             <X className="h-5 w-5" />
           </button>
         </div>

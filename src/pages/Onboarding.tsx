@@ -204,6 +204,11 @@ const Onboarding = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
+                      <Label>📱 Seu número do WhatsApp</Label>
+                      <Input placeholder="5573998715343" value={customerWhatsapp} onChange={e => setCustomerWhatsapp(e.target.value.replace(/\D/g, ""))} />
+                      <p className="text-xs text-muted-foreground">Número que seus clientes usam para falar com você</p>
+                    </div>
+                    <div className="space-y-2">
                       <Label>Logo da Empresa</Label>
                       <div className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-6 transition-colors hover:border-primary/50" onClick={() => document.getElementById("logo-upload")?.click()}>
                         {logoPreview ? (

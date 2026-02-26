@@ -95,6 +95,11 @@ const DashboardSettings = () => {
                   <SelectContent><SelectItem value="formal">Formal</SelectItem><SelectItem value="informal">Informal</SelectItem><SelectItem value="technical">Técnica</SelectItem></SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>📱 Número do WhatsApp para Atendimento</Label>
+                <Input placeholder="Ex: 5573998715343 (com DDI e DDD, sem espaços)" value={customerWhatsapp} onChange={e => setCustomerWhatsapp(e.target.value.replace(/\D/g, ""))} />
+                <p className="text-xs text-muted-foreground">Este é o número que seus clientes vão contatar para ser atendido pela IA</p>
+              </div>
             </motion.div>
           </TabsContent>
 
