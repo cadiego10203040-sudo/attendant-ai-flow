@@ -25,6 +25,9 @@ import DashboardHours from "./pages/DashboardHours";
 import DashboardConnections from "./pages/DashboardConnections";
 import DashboardAPI from "./pages/DashboardAPI";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import DataDeletion from "./pages/DataDeletion";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +58,9 @@ const App = () => (
               <Route path="/dashboard/hours" element={<ProtectedRoute><DashboardHours /></ProtectedRoute>} />
               <Route path="/dashboard/connections" element={<ProtectedRoute><DashboardConnections /></ProtectedRoute>} />
               <Route path="/dashboard/api" element={<ProtectedRoute><DashboardAPI /></ProtectedRoute>} />
+              <Route path="/privacidade" element={<PrivacyPolicy />} />
+              <Route path="/termos" element={<TermsOfService />} />
+              <Route path="/exclusao-dados" element={<DataDeletion />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CompanyProvider>
