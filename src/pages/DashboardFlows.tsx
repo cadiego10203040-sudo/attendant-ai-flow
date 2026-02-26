@@ -17,7 +17,7 @@ import { toast } from "@/hooks/use-toast";
 type Flow = { id: string; name: string; active: boolean; steps: any; executions: number; };
 
 const DashboardFlows = () => {
-  const { company } = useCompany();
+  const { company, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
