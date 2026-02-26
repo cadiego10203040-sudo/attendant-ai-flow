@@ -128,7 +128,7 @@ const Onboarding = () => {
     setSaving(false);
   };
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+  
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
