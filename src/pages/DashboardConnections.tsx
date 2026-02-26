@@ -13,39 +13,68 @@ const DashboardConnections = () => {
   const [phoneId, setPhoneId] = useState("");
   const [token, setToken] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!company) return;
-    setPhoneId(company.whatsapp_phone_id);
-    setToken(company.whatsapp_token);
-    setVerifyToken(company.whatsapp_verify_token);
+    setPhoneId(company.whatsapp_phone_id || "");
+    setToken(company.whatsapp_token || "");
+    setVerifyToken(company.whatsapp_verify_token || "");
+    setWebhookUrl(company.webhook_url || "");
     setConnected(!!company.whatsapp_phone_id && !!company.whatsapp_token);
   }, [company]);
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-
   const handleSave = async () => {
     if (!company) return;
+    if (!phoneId.trim()) { toast({ title: "Phone Number ID é obrigatório", variant: "destructive" }); return; }
+    if (!token.trim()) { toast({ title: "Access Token é obrigatório", variant: "destructive" }); return; }
+    if (!verifyToken.trim()) { toast({ title: "Verify Token é obrigatório", variant: "destructive" }); return; }
+    if (!webhookUrl.trim() || !webhookUrl.startsWith("https://")) { toast({ title: "URL do Webhook inválida", description: "Deve começar com https://", variant: "destructive" }); return; }
+
     setSaving(true);
-    await supabase.from("companies").update({ whatsapp_phone_id: phoneId, whatsapp_token: token, whatsapp_verify_token: verifyToken }).eq("id", company.id);
-    await refetch();
-    toast({ title: "Conexão salva!" });
+    const { error } = await supabase.from("companies").update({
+      whatsapp_phone_id: phoneId,
+      whatsapp_token: token,
+      whatsapp_verify_token: verifyToken,
+      webhook_url: webhookUrl,
+    }).eq("id", company.id);
+
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } else {
+      await refetch();
+      toast({ title: "Conexão salva!" });
+    }
     setSaving(false);
   };
 
   const handleTest = async () => {
-    if (!phoneId || !token) return;
+    if (!webhookUrl.trim() || !webhookUrl.startsWith("https://")) {
+      toast({ title: "URL do Webhook inválida", description: "Deve começar com https://", variant: "destructive" });
+      return;
+    }
+    if (!verifyToken.trim()) {
+      toast({ title: "Verify Token é obrigatório", variant: "destructive" });
+      return;
+    }
     setTesting(true);
     try {
-      const res = await fetch(`https://graph.facebook.com/v18.0/${phoneId}`, { headers: { Authorization: `Bearer ${token}` } });
-      setConnected(res.ok);
-      toast({ title: res.ok ? "✅ Conectado!" : "❌ Erro na conexão", description: res.ok ? "WhatsApp está funcionando" : "Verifique suas credenciais", variant: res.ok ? "default" : "destructive" });
+      const testUrl = `${webhookUrl}?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(verifyToken)}&hub.challenge=12345`;
+      const res = await fetch(testUrl);
+      const text = await res.text();
+      if (text.trim() === "12345") {
+        setConnected(true);
+        toast({ title: "✅ Webhook respondendo corretamente" });
+      } else {
+        setConnected(false);
+        toast({ title: "❌ Verify token inválido", description: "Webhook não retornou o challenge esperado", variant: "destructive" });
+      }
     } catch {
       setConnected(false);
-      toast({ title: "❌ Erro", description: "Não foi possível conectar", variant: "destructive" });
+      toast({ title: "❌ Erro de rede", description: "Não foi possível conectar ao webhook", variant: "destructive" });
     }
     setTesting(false);
   };
@@ -74,18 +103,16 @@ const DashboardConnections = () => {
           <div className="space-y-2"><Label>Access Token</Label><Input type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="Token permanente" /></div>
           <div className="space-y-2"><Label>Verify Token</Label><Input value={verifyToken} onChange={e => setVerifyToken(e.target.value)} placeholder="String de verificação" /></div>
 
-          <div className="rounded-xl border border-border bg-muted/50 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">URL do Webhook</p>
-                <code className="block mt-1 text-xs text-foreground break-all">{webhookUrl}</code>
-              </div>
-              <Button variant="outline" size="sm" onClick={copyWebhook}><Copy className="mr-1 h-3 w-3" /> Copiar</Button>
+          <div className="space-y-2">
+            <Label>URL do Webhook</Label>
+            <div className="flex gap-2">
+              <Input value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://seu-webhook.com/endpoint" className="flex-1" />
+              <Button variant="outline" size="icon" onClick={copyWebhook} title="Copiar"><Copy className="h-4 w-4" /></Button>
             </div>
           </div>
 
           <div className="flex gap-3">
-            <Button onClick={handleTest} disabled={testing || !phoneId || !token} variant="outline">
+            <Button onClick={handleTest} disabled={testing || !webhookUrl || !verifyToken} variant="outline">
               {testing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testando...</> : "Testar Conexão"}
             </Button>
             <Button onClick={handleSave} disabled={saving} className="bg-hero-gradient text-primary-foreground hover:opacity-90">

@@ -17,6 +17,7 @@ type Company = {
   whatsapp_phone_id: string;
   whatsapp_token: string;
   whatsapp_verify_token: string;
+  webhook_url: string;
   openai_key: string;
   mp_key: string;
 };

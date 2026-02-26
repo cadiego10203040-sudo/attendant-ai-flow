@@ -78,6 +78,7 @@ export type Database = {
           segment: string | null
           updated_at: string
           user_id: string
+          webhook_url: string | null
           whatsapp_phone_id: string | null
           whatsapp_token: string | null
           whatsapp_verify_token: string | null
@@ -98,6 +99,7 @@ export type Database = {
           segment?: string | null
           updated_at?: string
           user_id: string
+          webhook_url?: string | null
           whatsapp_phone_id?: string | null
           whatsapp_token?: string | null
           whatsapp_verify_token?: string | null
@@ -118,6 +120,7 @@ export type Database = {
           segment?: string | null
           updated_at?: string
           user_id?: string
+          webhook_url?: string | null
           whatsapp_phone_id?: string | null
           whatsapp_token?: string | null
           whatsapp_verify_token?: string | null
