@@ -25,6 +25,9 @@ import DashboardHours from "./pages/DashboardHours";
 import DashboardConnections from "./pages/DashboardConnections";
 import DashboardAPI from "./pages/DashboardAPI";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import DataDeletion from "./pages/DataDeletion";
 
 const queryClient = new QueryClient();
 
