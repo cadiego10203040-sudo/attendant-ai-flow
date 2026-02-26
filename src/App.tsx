@@ -24,6 +24,7 @@ import DashboardQuickReplies from "./pages/DashboardQuickReplies";
 import DashboardHours from "./pages/DashboardHours";
 import DashboardConnections from "./pages/DashboardConnections";
 import DashboardAPI from "./pages/DashboardAPI";
+import DashboardAutomation from "./pages/DashboardAutomation";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
