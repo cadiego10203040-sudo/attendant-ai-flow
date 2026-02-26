@@ -20,6 +20,7 @@ type Company = {
   webhook_url: string;
   openai_key: string;
   mp_key: string;
+  customer_whatsapp: string;
 };
 
 type CompanyContextType = {

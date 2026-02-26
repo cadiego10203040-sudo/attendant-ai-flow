@@ -67,6 +67,7 @@ export type Database = {
           ai_instructions: string | null
           business_hours: Json | null
           created_at: string
+          customer_whatsapp: string | null
           escalation_rules: string | null
           id: string
           language: string | null
@@ -88,6 +89,7 @@ export type Database = {
           ai_instructions?: string | null
           business_hours?: Json | null
           created_at?: string
+          customer_whatsapp?: string | null
           escalation_rules?: string | null
           id?: string
           language?: string | null
@@ -109,6 +111,7 @@ export type Database = {
           ai_instructions?: string | null
           business_hours?: Json | null
           created_at?: string
+          customer_whatsapp?: string | null
           escalation_rules?: string | null
           id?: string
           language?: string | null

@@ -58,7 +58,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       title: "AUTOMAÇÃO",
       items: [
         { emoji: "⚡", label: "Fluxos de Conversa", path: "/dashboard/flows" },
-        { emoji: "🔁", label: "Automação" },
+        { emoji: "🔁", label: "Automação", path: "/dashboard/automation" },
         { emoji: "🏷️", label: "Etiquetas", path: "/dashboard/labels" },
       ],
     },
@@ -70,7 +70,6 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         { emoji: "🕐", label: "Horários", path: "/dashboard/hours" },
         { emoji: "🔌", label: "Conexões", path: "/dashboard/connections" },
         { emoji: "🔑", label: "API", path: "/dashboard/api" },
-        { emoji: "⚙️", label: "Configurações Gerais", path: "/dashboard/settings" },
       ],
     },
   ];
@@ -93,6 +92,20 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-sidebar-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
+        </div>
+        {/* WhatsApp status */}
+        <div className="px-5 pb-3">
+          {company?.customer_whatsapp ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span>+{company.customer_whatsapp.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, "$1 ($2) $3-$4")}</span>
+            </div>
+          ) : (
+            <Link to="/dashboard/settings" className="flex items-center gap-2 text-xs text-destructive hover:underline" onClick={() => setSidebarOpen(false)}>
+              <span className="h-2 w-2 rounded-full bg-destructive" />
+              WhatsApp não configurado
+            </Link>
+          )}
         </div>
 
         <nav className="flex-1 overflow-auto px-3 py-2 space-y-5">

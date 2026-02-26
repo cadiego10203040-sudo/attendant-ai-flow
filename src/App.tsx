@@ -24,6 +24,7 @@ import DashboardQuickReplies from "./pages/DashboardQuickReplies";
 import DashboardHours from "./pages/DashboardHours";
 import DashboardConnections from "./pages/DashboardConnections";
 import DashboardAPI from "./pages/DashboardAPI";
+import DashboardAutomation from "./pages/DashboardAutomation";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/dashboard/hours" element={<ProtectedRoute><DashboardHours /></ProtectedRoute>} />
               <Route path="/dashboard/connections" element={<ProtectedRoute><DashboardConnections /></ProtectedRoute>} />
               <Route path="/dashboard/api" element={<ProtectedRoute><DashboardAPI /></ProtectedRoute>} />
+              <Route path="/dashboard/automation" element={<ProtectedRoute><DashboardAutomation /></ProtectedRoute>} />
               <Route path="/privacidade" element={<PrivacyPolicy />} />
               <Route path="/termos" element={<TermsOfService />} />
               <Route path="/exclusao-dados" element={<DataDeletion />} />

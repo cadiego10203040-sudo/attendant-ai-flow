@@ -29,6 +29,7 @@ const Onboarding = () => {
   const [companyName, setCompanyName] = useState("");
   const [segment, setSegment] = useState("");
   const [language, setLanguage] = useState("");
+  const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
@@ -95,7 +96,8 @@ const Onboarding = () => {
         whatsapp_token: accessToken,
         whatsapp_verify_token: verifyToken,
         webhook_url: webhookUrl,
-      }).select().single();
+        customer_whatsapp: customerWhatsapp,
+      } as any).select().single();
 
       if (error) throw error;
 
@@ -200,6 +202,11 @@ const Onboarding = () => {
                           <SelectItem value="technical">Técnica</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>📱 Seu número do WhatsApp</Label>
+                      <Input placeholder="5573998715343" value={customerWhatsapp} onChange={e => setCustomerWhatsapp(e.target.value.replace(/\D/g, ""))} />
+                      <p className="text-xs text-muted-foreground">Número que seus clientes usam para falar com você</p>
                     </div>
                     <div className="space-y-2">
                       <Label>Logo da Empresa</Label>

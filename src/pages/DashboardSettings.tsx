@@ -26,6 +26,7 @@ const DashboardSettings = () => {
   const [objections, setObjections] = useState("");
   const [escalation, setEscalation] = useState("");
   const [hours, setHours] = useState("");
+  const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ const DashboardSettings = () => {
     setObjections(company.objections);
     setEscalation(company.escalation_rules);
     setHours(typeof company.business_hours === "string" ? company.business_hours : JSON.stringify(company.business_hours));
+    setCustomerWhatsapp(company.customer_whatsapp || "");
 
     supabase.from("products").select("*").eq("company_id", company.id).then(({ data }) => {
       if (data) setProducts(data.map(p => ({ id: p.id, name: p.name, description: p.description || "", price: String(p.price || 0), card_link: p.card_link || "", pix_link: p.pix_link || "" })));
@@ -45,7 +47,7 @@ const DashboardSettings = () => {
 
   const handleSave = () => execute(async () => {
     const c = await ensureCompany();
-    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours }).eq("id", c.id);
+    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours, customer_whatsapp: customerWhatsapp } as any).eq("id", c.id);
     if (error) throw error;
 
     for (const p of products) {
@@ -92,6 +94,11 @@ const DashboardSettings = () => {
                 <Select value={language} onValueChange={setLanguage}><SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="formal">Formal</SelectItem><SelectItem value="informal">Informal</SelectItem><SelectItem value="technical">Técnica</SelectItem></SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>📱 Número do WhatsApp para Atendimento</Label>
+                <Input placeholder="Ex: 5573998715343 (com DDI e DDD, sem espaços)" value={customerWhatsapp} onChange={e => setCustomerWhatsapp(e.target.value.replace(/\D/g, ""))} />
+                <p className="text-xs text-muted-foreground">Este é o número que seus clientes vão contatar para ser atendido pela IA</p>
               </div>
             </motion.div>
           </TabsContent>
