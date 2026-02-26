@@ -70,7 +70,6 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         { emoji: "🕐", label: "Horários", path: "/dashboard/hours" },
         { emoji: "🔌", label: "Conexões", path: "/dashboard/connections" },
         { emoji: "🔑", label: "API", path: "/dashboard/api" },
-        { emoji: "⚙️", label: "Configurações Gerais", path: "/dashboard/settings" },
       ],
     },
   ];
