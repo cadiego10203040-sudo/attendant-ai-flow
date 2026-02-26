@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 type LabelItem = { id: string; name: string; color: string; };
 
 const DashboardLabels = () => {
-  const { company } = useCompany();
+  const { company, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [labels, setLabels] = useState<LabelItem[]>([]);
   const [loading, setLoading] = useState(true);
