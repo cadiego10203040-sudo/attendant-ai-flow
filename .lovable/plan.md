@@ -1,39 +1,76 @@
 
 
-## Plano: Padronizar botões "Salvar" com estados visuais e tratamento de erros
+## Plan: Visual Overhaul -- Dark Theme + Orange Accent + Plus Jakarta Sans + Expanded Sidebar
 
-### 1. Criar hook `src/hooks/useSave.ts`
-Hook reutilizável com estados `idle | loading | success | error`, transição automática para `idle` após 3s, e integração com toast.
+This plan covers purely visual/CSS changes across the project. No logic, routes, or functionality will be modified.
 
-### 2. Criar componente `src/components/SaveButton.tsx`
-Botão reutilizável que consome o status do `useSave` e exibe:
-- Idle: fundo `#FF6B2B`, ícone 💾, "Salvar"
-- Loading: fundo com opacidade, spinner, "Salvando...", disabled
-- Success: fundo `#22D3A5`, ícone ✅, "Salvo!" (3s)
-- Error: fundo `#FF5252`, ícone ❌, "Erro ao salvar" (3s)
+### Technical Details
 
-### 3. Atualizar TODAS as páginas com save
+The changes span these files:
 
-**DashboardAPI.tsx** — Adicionar verificação de `error` no retorno do Supabase, usar `SaveButton`, toast "🔑 Chaves de API salvas com sucesso!"
+**1. `index.html`** -- Replace Google Fonts import link to load Plus Jakarta Sans (weights 400-800).
 
-**DashboardHours.tsx** — Idem, toast "🕐 Horários de atendimento salvos!"
+**2. `src/index.css`** -- Complete CSS variable overhaul:
+- Font import: `Plus Jakarta Sans` (400,500,600,700,800)
+- `--font-heading` and `--font-body` both set to `'Plus Jakarta Sans'`
+- `:root` variables updated to new dark palette:
+  - `--background`: `#0C0E13`
+  - `--foreground`: `#E8EEFF`
+  - `--card`: `#161A24`
+  - `--card-foreground`: `#E8EEFF`
+  - `--popover`: `#161A24`
+  - `--popover-foreground`: `#E8EEFF`
+  - `--primary`: `#FF6B2B` (orange)
+  - `--primary-foreground`: `#FFFFFF`
+  - `--secondary`: `#1C2130`
+  - `--secondary-foreground`: `#E8EEFF`
+  - `--muted`: `#1C2130`
+  - `--muted-foreground`: `#6B7A99`
+  - `--accent`: `#1C2130`
+  - `--accent-foreground`: `#FF6B2B`
+  - `--destructive`: stays red-ish
+  - `--border`: `#252D3D`
+  - `--input`: `#1C2130`
+  - `--ring`: `#FF6B2B`
+  - `--radius`: `0.875rem` (14px)
+  - Sidebar vars: background `#0F1118`, border `#252D3D`, primary `#FF6B2B`
+  - Custom tokens: `--hero-gradient` updated to orange gradient, `--shadow-glow` to orange glow
+- Remove `.dark` block (everything is dark by default now)
+- Update utility classes for new gradient/glow
 
-**DashboardConnections.tsx** — Já tem tratamento de erro, trocar botão por `SaveButton`, toast "🔌 Configurações do WhatsApp salvas!"
+**3. `tailwind.config.ts`** -- Update font families to `'Plus Jakarta Sans'`.
 
-**DashboardSettings.tsx** — Já tem try/catch, trocar botão por `SaveButton`, toasts personalizados "⚙️ Configurações salvas!"
+**4. `src/components/ui/input.tsx`** -- Update default classes for new input styling: `bg-[#1C2130]`, `border-[#252D3D]`, `text-[#E8EEFF]`, `placeholder:text-[#3A4560]`, `rounded-[10px]`, `focus-visible:ring-[#FF6B2B]`, padding `py-3 px-4`.
 
-**DashboardLabels.tsx** — Adicionar verificação de `error`, trocar botão por `SaveButton`, toast "🏷️ Etiqueta salva!"
+**5. `src/components/ui/button.tsx`** -- Update `buttonVariants`:
+  - `default`: `bg-[#FF6B2B] text-white rounded-[9px] font-bold hover:bg-[#E8521A]`
+  - `outline`/`secondary`: transparent + border `#252D3D`, text `#6B7A99`, hover border/text `#FF6B2B`
 
-**DashboardQuickReplies.tsx** — Idem, toast "💬 Resposta rápida salva!"
+**6. `src/components/ui/card.tsx`** -- Update Card base: `rounded-[14px] border-[#252D3D] bg-[#161A24] shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[#FF6B2B30]`.
 
-**DashboardFlows.tsx** — Idem no `createFlow` e `toggleFlow`, toast "⚡ Fluxo atualizado!"
+**7. `src/components/DashboardLayout.tsx`** -- Expand sidebar with grouped menu items:
+  - ATENDIMENTO: Conversas (with badge), IA ao Vivo, Bate Papo ao Vivo
+  - VENDAS: Pedidos, Metricas, Transmissao, Audiencia
+  - AUTOMACAO: Fluxos de Conversa, Automacao, Etiquetas
+  - CONFIGURACOES: Empresa, Respostas Rapidas, Horarios, Conexoes, API, Configuracoes Gerais
+  - Active item style: `bg-[#FF6B2B18] border-l-3 border-[#FF6B2B] text-[#FF6B2B]`
+  - Hover: `bg-[#1C2130] text-[#E8EEFF]`
+  - Sidebar bg: `#0F1118`, border-right `#252D3D`
+  - Logo icon: gradient orange background with soft glow
+  - Non-active items that have no route yet will just be visual placeholders (no navigation)
 
-### 4. Toast customizado
-Usar o toast existente do projeto (`@/hooks/use-toast`) com estilos customizados para sucesso (fundo verde escuro) e erro (fundo vermelho escuro), sem criar sistema paralelo.
+**8. All page files** -- Replace any inline `bg-hero-gradient` references to use the updated orange gradient. Replace `font-heading` usage (which will now resolve to Plus Jakarta Sans via tailwind config). No logic changes.
 
-### Regras
-- Não alterar layout, cores de fundo ou estrutura visual das telas
-- Não limpar campos após salvar
-- Dados carregados do banco ao abrir (já implementado em todas)
-- Botão disabled durante loading
+### What stays the same
+- All routes in `App.tsx`
+- All state management, form handlers, mock data
+- All component structure and props
+- All labels, texts, placeholders
+
+### Summary of visual changes
+- Font: Plus Jakarta Sans everywhere
+- Dark background with orange (#FF6B2B) accents
+- Expanded sidebar with grouped navigation items
+- Updated card, input, and button component styles
+- Consistent dark theme across all pages
 

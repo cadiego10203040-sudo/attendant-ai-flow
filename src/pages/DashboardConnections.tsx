@@ -1,20 +1,22 @@
 import { useState, useEffect } from "react";
-import { Save, Loader2, CheckCircle2, Copy, XCircle, Wifi } from "lucide-react";
+import { Loader2, Copy, XCircle, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/DashboardLayout";
+import SaveButton from "@/components/SaveButton";
 import { useCompany } from "@/hooks/useCompany";
+import { useSave } from "@/hooks/useSave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const DashboardConnections = () => {
   const { company, refetch } = useCompany();
+  const { status, execute } = useSave();
   const [phoneId, setPhoneId] = useState("");
   const [token, setToken] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
-  const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
 
@@ -27,28 +29,23 @@ const DashboardConnections = () => {
     setConnected(!!company.whatsapp_phone_id && !!company.whatsapp_token);
   }, [company]);
 
-  const handleSave = async () => {
-    if (!company) return;
+  const handleSave = () => {
     if (!phoneId.trim()) { toast({ title: "Phone Number ID é obrigatório", variant: "destructive" }); return; }
     if (!token.trim()) { toast({ title: "Access Token é obrigatório", variant: "destructive" }); return; }
     if (!verifyToken.trim()) { toast({ title: "Verify Token é obrigatório", variant: "destructive" }); return; }
     if (!webhookUrl.trim() || !webhookUrl.startsWith("https://")) { toast({ title: "URL do Webhook inválida", description: "Deve começar com https://", variant: "destructive" }); return; }
 
-    setSaving(true);
-    const { error } = await supabase.from("companies").update({
-      whatsapp_phone_id: phoneId,
-      whatsapp_token: token,
-      whatsapp_verify_token: verifyToken,
-      webhook_url: webhookUrl,
-    }).eq("id", company.id);
-
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-    } else {
+    execute(async () => {
+      if (!company) throw new Error("Empresa não encontrada");
+      const { error } = await supabase.from("companies").update({
+        whatsapp_phone_id: phoneId,
+        whatsapp_token: token,
+        whatsapp_verify_token: verifyToken,
+        webhook_url: webhookUrl,
+      }).eq("id", company.id);
+      if (error) throw error;
       await refetch();
-      toast({ title: "Conexão salva!" });
-    }
-    setSaving(false);
+    }, "🔌 Configurações do WhatsApp salvas!");
   };
 
   const handleTest = async () => {
@@ -115,9 +112,7 @@ const DashboardConnections = () => {
             <Button onClick={handleTest} disabled={testing || !webhookUrl || !verifyToken} variant="outline">
               {testing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testando...</> : "Testar Conexão"}
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-hero-gradient text-primary-foreground hover:opacity-90">
-              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><Save className="mr-2 h-4 w-4" /> Salvar</>}
-            </Button>
+            <SaveButton status={status} onClick={handleSave} />
           </div>
         </div>
       </div>

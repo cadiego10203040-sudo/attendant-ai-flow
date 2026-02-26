@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/DashboardLayout";
+import SaveButton from "@/components/SaveButton";
 import { useCompany } from "@/hooks/useCompany";
+import { useSave } from "@/hooks/useSave";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -16,12 +18,12 @@ type Flow = { id: string; name: string; active: boolean; steps: any; executions:
 
 const DashboardFlows = () => {
   const { company } = useCompany();
+  const { status, execute } = useSave();
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newMessage, setNewMessage] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const fetchFlows = async () => {
     if (!company) return;
@@ -33,18 +35,20 @@ const DashboardFlows = () => {
   useEffect(() => { fetchFlows(); }, [company]);
 
   const toggleFlow = async (id: string, active: boolean) => {
-    await supabase.from("flows").update({ active: !active }).eq("id", id);
+    const { error } = await supabase.from("flows").update({ active: !active }).eq("id", id);
+    if (error) { toast({ title: "❌ Erro ao atualizar fluxo", variant: "destructive" }); return; }
+    toast({ title: "⚡ Fluxo atualizado!" });
     fetchFlows();
   };
 
-  const createFlow = async () => {
+  const createFlow = () => {
     if (!company || !newName.trim()) return;
-    setSaving(true);
-    await supabase.from("flows").insert({ company_id: company.id, name: newName, steps: [{ message: newMessage }] });
-    setOpen(false); setNewName(""); setNewMessage("");
-    fetchFlows();
-    toast({ title: "Fluxo criado!" });
-    setSaving(false);
+    execute(async () => {
+      const { error } = await supabase.from("flows").insert({ company_id: company.id, name: newName, steps: [{ message: newMessage }] });
+      if (error) throw error;
+      setOpen(false); setNewName(""); setNewMessage("");
+      await fetchFlows();
+    }, "⚡ Fluxo criado com sucesso!");
   };
 
   return (
@@ -59,7 +63,7 @@ const DashboardFlows = () => {
               <div className="space-y-4">
                 <div className="space-y-2"><Label>Nome do Fluxo</Label><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ex: Boas Vindas" /></div>
                 <div className="space-y-2"><Label>Mensagem Inicial</Label><Textarea rows={3} value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Mensagem que será enviada..." /></div>
-                <Button onClick={createFlow} disabled={saving} className="w-full">{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />} Criar Fluxo</Button>
+                <SaveButton status={status} onClick={createFlow} className="w-full" />
               </div>
             </DialogContent>
           </Dialog>
