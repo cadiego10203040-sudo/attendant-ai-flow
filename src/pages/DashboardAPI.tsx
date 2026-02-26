@@ -24,14 +24,9 @@ const DashboardAPI = () => {
   const handleSave = async () => {
     if (!company) return;
     setSaving(true);
-    try {
-      const { error } = await supabase.from("companies").update({ openai_key: openaiKey, mp_key: mpKey }).eq("id", company.id);
-      if (error) throw error;
-      await refetch();
-      toast({ title: "Chaves salvas!" });
-    } catch (err: any) {
-      toast({ title: "Erro ao salvar chaves", description: err.message, variant: "destructive" });
-    }
+    await supabase.from("companies").update({ openai_key: openaiKey, mp_key: mpKey }).eq("id", company.id);
+    await refetch();
+    toast({ title: "Chaves salvas!" });
     setSaving(false);
   };
 

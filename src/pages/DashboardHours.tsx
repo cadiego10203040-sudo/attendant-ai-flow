@@ -36,15 +36,10 @@ const DashboardHours = () => {
   const handleSave = async () => {
     if (!company) return;
     setSaving(true);
-    try {
-      const bh = JSON.stringify({ days, offlineMessage });
-      const { error } = await supabase.from("companies").update({ business_hours: bh }).eq("id", company.id);
-      if (error) throw error;
-      await refetch();
-      toast({ title: "Horários salvos!" });
-    } catch (err: any) {
-      toast({ title: "Erro ao salvar horários", description: err.message, variant: "destructive" });
-    }
+    const bh = JSON.stringify({ days, offlineMessage });
+    await supabase.from("companies").update({ business_hours: bh }).eq("id", company.id);
+    await refetch();
+    toast({ title: "Horários salvos!" });
     setSaving(false);
   };
 
