@@ -42,9 +42,10 @@ const DashboardFlows = () => {
   };
 
   const createFlow = () => {
-    if (!company || !newName.trim()) return;
+    if (!newName.trim()) return;
     execute(async () => {
-      const { error } = await supabase.from("flows").insert({ company_id: company.id, name: newName, steps: [{ message: newMessage }] });
+      const c = await ensureCompany();
+      const { error } = await supabase.from("flows").insert({ company_id: c.id, name: newName, steps: [{ message: newMessage }] });
       if (error) throw error;
       setOpen(false); setNewName(""); setNewMessage("");
       await fetchFlows();

@@ -36,13 +36,14 @@ const DashboardQuickReplies = () => {
   useEffect(() => { fetchReplies(); }, [company]);
 
   const handleSave = () => {
-    if (!company || !shortcut.trim() || !message.trim()) return;
+    if (!shortcut.trim() || !message.trim()) return;
     execute(async () => {
+      const c = await ensureCompany();
       if (editId) {
         const { error } = await supabase.from("quick_replies").update({ shortcut, message }).eq("id", editId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("quick_replies").insert({ company_id: company.id, shortcut, message });
+        const { error } = await supabase.from("quick_replies").insert({ company_id: c.id, shortcut, message });
         if (error) throw error;
       }
       setOpen(false); setEditId(null); setShortcut(""); setMessage("");
