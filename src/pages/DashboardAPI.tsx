@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const DashboardAPI = () => {
-  const { company, refetch } = useCompany();
+  const { company, refetch, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [openaiKey, setOpenaiKey] = useState("");
   const [mpKey, setMpKey] = useState("");

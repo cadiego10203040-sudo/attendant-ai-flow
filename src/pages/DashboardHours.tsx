@@ -33,9 +33,9 @@ const DashboardHours = () => {
   };
 
   const handleSave = () => execute(async () => {
-    if (!company) throw new Error("Empresa não encontrada");
+    const c = await ensureCompany();
     const bh = JSON.stringify({ days, offlineMessage });
-    const { error } = await supabase.from("companies").update({ business_hours: bh }).eq("id", company.id);
+    const { error } = await supabase.from("companies").update({ business_hours: bh }).eq("id", c.id);
     if (error) throw error;
     await refetch();
   }, "🕐 Horários de atendimento salvos!");
