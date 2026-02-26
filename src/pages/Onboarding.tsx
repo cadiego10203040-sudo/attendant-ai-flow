@@ -94,6 +94,7 @@ const Onboarding = () => {
         whatsapp_phone_id: phoneNumberId,
         whatsapp_token: accessToken,
         whatsapp_verify_token: verifyToken,
+        webhook_url: webhookUrl,
       }).select().single();
 
       if (error) throw error;
