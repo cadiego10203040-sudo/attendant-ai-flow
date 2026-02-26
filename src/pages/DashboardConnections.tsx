@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const DashboardConnections = () => {
-  const { company, refetch } = useCompany();
+  const { company, refetch, ensureCompany } = useCompany();
   const { status, execute } = useSave();
   const [phoneId, setPhoneId] = useState("");
   const [token, setToken] = useState("");
