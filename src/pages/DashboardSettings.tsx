@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 type Product = { id: string; name: string; description: string; price: string; card_link: string; pix_link: string; isNew?: boolean };
 
 const DashboardSettings = () => {
-  const { company, refetch } = useCompany();
+  const { company, refetch, ensureCompany } = useCompany();
   const { status, execute } = useSave();
 
   const [name, setName] = useState("");
