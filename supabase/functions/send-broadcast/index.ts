@@ -19,14 +19,17 @@ Deno.serve(async (req) => {
     // Verify auth
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
+      console.warn("[send-broadcast] No authorization header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
+      console.warn("[send-broadcast] Invalid auth token");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -35,29 +38,42 @@ Deno.serve(async (req) => {
 
     const { broadcast_id } = await req.json();
 
+    console.log("[send-broadcast] Request from user:", user.id, { broadcast_id });
+
+    if (!broadcast_id) {
+      return new Response(JSON.stringify({ error: "Missing broadcast_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get broadcast
-    const { data: broadcast } = await supabase
+    const { data: broadcast, error: broadcastError } = await supabase
       .from("broadcasts")
       .select("*")
       .eq("id", broadcast_id)
       .single();
 
-    if (!broadcast) {
+    if (broadcastError || !broadcast) {
+      console.error("[send-broadcast] Broadcast not found:", broadcastError);
       return new Response(JSON.stringify({ error: "Broadcast not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("[send-broadcast] Broadcast found:", broadcast.id, { title: broadcast.title, status: broadcast.status });
+
     // Verify company ownership
-    const { data: company } = await supabase
+    const { data: company, error: companyError } = await supabase
       .from("companies")
       .select("*")
       .eq("id", broadcast.company_id)
       .eq("user_id", user.id)
       .single();
 
-    if (!company) {
+    if (companyError || !company) {
+      console.error("[send-broadcast] Company not found or unauthorized:", companyError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,6 +81,7 @@ Deno.serve(async (req) => {
     }
 
     if (!company.whatsapp_phone_id || !company.whatsapp_token) {
+      console.warn("[send-broadcast] WhatsApp not configured for company:", broadcast.company_id);
       return new Response(JSON.stringify({ error: "WhatsApp not configured" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -75,36 +92,74 @@ Deno.serve(async (req) => {
     const audienceFilter = broadcast.audience_filter as any;
     const filterType = audienceFilter?.type || "all";
 
+    console.log("[send-broadcast] Fetching audience with filter:", filterType);
+
     // Get unique phones from conversations
-    const { data: conversations } = await supabase
+    const { data: conversations, error: convError } = await supabase
       .from("conversations")
       .select("customer_phone")
       .eq("company_id", company.id);
 
+    if (convError) {
+      console.error("[send-broadcast] Error fetching conversations:", convError);
+      return new Response(JSON.stringify({ error: "Failed to fetch conversations" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     let phones = [...new Set((conversations || []).map((c: any) => c.customer_phone))];
+
+    console.log("[send-broadcast] Total unique phones found:", phones.length);
 
     // Filter by audience type
     if (filterType === "buyers") {
-      const { data: orders } = await supabase
+      const { data: orders, error: ordersError } = await supabase
         .from("orders")
         .select("customer_phone")
         .eq("company_id", company.id)
         .eq("payment_status", "paid");
+
+      if (ordersError) {
+        console.error("[send-broadcast] Error fetching orders:", ordersError);
+      }
+
       const buyerPhones = new Set((orders || []).map((o: any) => o.customer_phone));
       phones = phones.filter((p) => buyerPhones.has(p));
+      console.log("[send-broadcast] Filtered to buyers only:", phones.length);
     } else if (filterType === "leads") {
-      const { data: orders } = await supabase
+      const { data: orders, error: ordersError } = await supabase
         .from("orders")
         .select("customer_phone")
         .eq("company_id", company.id)
         .eq("payment_status", "paid");
+
+      if (ordersError) {
+        console.error("[send-broadcast] Error fetching orders:", ordersError);
+      }
+
       const buyerPhones = new Set((orders || []).map((o: any) => o.customer_phone));
       phones = phones.filter((p) => !buyerPhones.has(p));
+      console.log("[send-broadcast] Filtered to leads only:", phones.length);
     }
 
-    // Send messages
+    if (phones.length === 0) {
+      console.warn("[send-broadcast] No phones to send to");
+      return new Response(JSON.stringify({ status: "sent", total_sent: 0, total_audience: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Send messages with rate limiting
     let sent = 0;
-    for (const phone of phones) {
+    let failed = 0;
+    const DELAY_MS = 100; // 100ms between messages to avoid rate limits
+
+    console.log("[send-broadcast] Starting message delivery to", phones.length, "recipients");
+
+    for (let i = 0; i < phones.length; i++) {
+      const phone = phones[i];
+
       try {
         const res = await fetch(
           `https://graph.facebook.com/v18.0/${company.whatsapp_phone_id}/messages`,
@@ -122,16 +177,32 @@ Deno.serve(async (req) => {
             }),
           }
         );
-        if (res.ok) sent++;
-        // Small delay to avoid rate limits
-        await new Promise((r) => setTimeout(r, 100));
+
+        if (res.ok) {
+          sent++;
+          if (sent % 10 === 0) {
+            console.log("[send-broadcast] Progress:", sent, "/", phones.length);
+          }
+        } else {
+          failed++;
+          const errText = await res.text();
+          console.warn("[send-broadcast] Failed to send to", phone, ":", res.status, errText);
+        }
       } catch (e) {
-        console.error(`Failed to send to ${phone}:`, e);
+        failed++;
+        console.error("[send-broadcast] Error sending to", phone, ":", e);
+      }
+
+      // Rate limiting delay (except on last message)
+      if (i < phones.length - 1) {
+        await new Promise((r) => setTimeout(r, DELAY_MS));
       }
     }
 
+    console.log("[send-broadcast] Delivery complete. Sent:", sent, "Failed:", failed);
+
     // Update broadcast status
-    await supabase
+    const { error: updateError } = await supabase
       .from("broadcasts")
       .update({
         status: "sent",
@@ -140,12 +211,21 @@ Deno.serve(async (req) => {
       })
       .eq("id", broadcast_id);
 
+    if (updateError) {
+      console.error("[send-broadcast] Error updating broadcast status:", updateError);
+    }
+
     return new Response(
-      JSON.stringify({ status: "sent", total_sent: sent, total_audience: phones.length }),
+      JSON.stringify({
+        status: "sent",
+        total_sent: sent,
+        total_failed: failed,
+        total_audience: phones.length,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("send-broadcast error:", err);
+    console.error("[send-broadcast] Unexpected error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

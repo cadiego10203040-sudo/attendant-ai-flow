@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
     // Verify auth
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
+      console.warn("[send-message] No authorization header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -28,6 +29,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
+      console.warn("[send-message] Invalid auth token");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -36,15 +38,25 @@ Deno.serve(async (req) => {
 
     const { company_id, phone, message, conversation_id } = await req.json();
 
+    console.log("[send-message] Request from user:", user.id, { company_id, phone: phone ? "***" : "missing", message: message ? message.substring(0, 50) : "missing" });
+
+    if (!company_id || !phone || !message) {
+      return new Response(JSON.stringify({ error: "Missing required fields: company_id, phone, message" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Verify company belongs to user
-    const { data: company } = await supabase
+    const { data: company, error: companyError } = await supabase
       .from("companies")
       .select("*")
       .eq("id", company_id)
       .eq("user_id", user.id)
       .single();
 
-    if (!company) {
+    if (companyError || !company) {
+      console.error("[send-message] Company not found or unauthorized:", companyError);
       return new Response(JSON.stringify({ error: "Company not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -52,6 +64,7 @@ Deno.serve(async (req) => {
     }
 
     if (!company.whatsapp_phone_id || !company.whatsapp_token) {
+      console.warn("[send-message] WhatsApp not configured for company:", company_id);
       return new Response(JSON.stringify({ error: "WhatsApp not configured" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -59,6 +72,8 @@ Deno.serve(async (req) => {
     }
 
     // Send via Meta API
+    console.log("[send-message] Sending message via Meta API");
+
     const waRes = await fetch(
       `https://graph.facebook.com/v18.0/${company.whatsapp_phone_id}/messages`,
       {
@@ -78,31 +93,43 @@ Deno.serve(async (req) => {
 
     if (!waRes.ok) {
       const errText = await waRes.text();
-      console.error("WhatsApp API error:", errText);
+      console.error("[send-message] WhatsApp API error:", waRes.status, errText);
       return new Response(JSON.stringify({ error: "Failed to send WhatsApp message", details: errText }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const waData = await waRes.json();
+    console.log("[send-message] Message sent successfully via WhatsApp API");
+
     // If conversation_id provided, save message
     if (conversation_id) {
-      await supabase.from("messages").insert({
+      const { error: msgError } = await supabase.from("messages").insert({
         conversation_id,
         role: "assistant",
         content: message,
       });
-      await supabase
+
+      if (msgError) {
+        console.error("[send-message] Error saving message to database:", msgError);
+      }
+
+      const { error: convError } = await supabase
         .from("conversations")
         .update({ last_message: message, last_message_at: new Date().toISOString() })
         .eq("id", conversation_id);
+
+      if (convError) {
+        console.error("[send-message] Error updating conversation:", convError);
+      }
     }
 
-    return new Response(JSON.stringify({ status: "sent" }), {
+    return new Response(JSON.stringify({ status: "sent", message_id: waData.messages?.[0]?.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("send-message error:", err);
+    console.error("[send-message] Unexpected error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

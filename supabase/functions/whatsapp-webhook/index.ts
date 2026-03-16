@@ -22,19 +22,30 @@ Deno.serve(async (req) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
+    console.log("[WhatsApp Webhook] GET verification request", { mode, token: token ? "***" : "missing", challenge: challenge ? "***" : "missing" });
+
     if (mode === "subscribe" && token && challenge) {
       // Find company by verify token
-      const { data: company } = await supabase
+      const { data: company, error } = await supabase
         .from("companies")
         .select("id")
         .eq("whatsapp_verify_token", token)
         .maybeSingle();
 
+      if (error) {
+        console.error("[WhatsApp Webhook] Error finding company:", error);
+        return new Response("Error", { status: 500, headers: corsHeaders });
+      }
+
       if (company) {
+        console.log("[WhatsApp Webhook] Verification successful for company:", company.id);
         return new Response(challenge, { status: 200, headers: corsHeaders });
       }
+
+      console.warn("[WhatsApp Webhook] Invalid verify token");
       return new Response("Invalid verify token", { status: 403, headers: corsHeaders });
     }
+
     return new Response("OK", { status: 200, headers: corsHeaders });
   }
 
@@ -42,11 +53,14 @@ Deno.serve(async (req) => {
   if (req.method === "POST") {
     try {
       const body = await req.json();
+      console.log("[WhatsApp Webhook] Received POST", { hasEntry: !!body?.entry, hasChanges: !!body?.entry?.[0]?.changes });
+
       const entry = body?.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
 
       if (!value?.messages || value.messages.length === 0) {
+        console.log("[WhatsApp Webhook] No messages in payload");
         return new Response(JSON.stringify({ status: "no messages" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -58,29 +72,42 @@ Deno.serve(async (req) => {
       const customerName = value.contacts?.[0]?.profile?.name || "";
       const messageText = msg.text?.body || "";
 
+      console.log("[WhatsApp Webhook] Processing message", { phoneNumberId, customerPhone, messageText: messageText.substring(0, 50) });
+
       if (!phoneNumberId || !messageText) {
+        console.log("[WhatsApp Webhook] Missing phoneNumberId or messageText");
         return new Response(JSON.stringify({ status: "ignored" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       // Find the company
-      const { data: company } = await supabase
+      const { data: company, error: companyError } = await supabase
         .from("companies")
         .select("*")
         .eq("whatsapp_phone_id", phoneNumberId)
         .maybeSingle();
 
+      if (companyError) {
+        console.error("[WhatsApp Webhook] Error finding company:", companyError);
+        return new Response(JSON.stringify({ status: "error", error: "Company lookup failed" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       if (!company) {
-        console.error("Company not found for phone_number_id:", phoneNumberId);
+        console.error("[WhatsApp Webhook] Company not found for phone_number_id:", phoneNumberId);
         return new Response(JSON.stringify({ status: "company not found" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
+      console.log("[WhatsApp Webhook] Company found:", company.id);
+
       // Find or create conversation
-      let { data: conversation } = await supabase
+      let { data: conversation, error: convError } = await supabase
         .from("conversations")
         .select("*")
         .eq("company_id", company.id)
@@ -90,8 +117,13 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
+      if (convError) {
+        console.error("[WhatsApp Webhook] Error finding conversation:", convError);
+        throw convError;
+      }
+
       if (!conversation) {
-        const { data: newConv } = await supabase
+        const { data: newConv, error: insertError } = await supabase
           .from("conversations")
           .insert({
             company_id: company.id,
@@ -101,7 +133,14 @@ Deno.serve(async (req) => {
           })
           .select()
           .single();
+
+        if (insertError) {
+          console.error("[WhatsApp Webhook] Error creating conversation:", insertError);
+          throw insertError;
+        }
+
         conversation = newConv;
+        console.log("[WhatsApp Webhook] New conversation created:", conversation.id);
       } else if (customerName && !conversation.customer_name) {
         await supabase
           .from("conversations")
@@ -114,11 +153,15 @@ Deno.serve(async (req) => {
       }
 
       // Save incoming message
-      await supabase.from("messages").insert({
+      const { error: msgError } = await supabase.from("messages").insert({
         conversation_id: conversation.id,
         role: "user",
         content: messageText,
       });
+
+      if (msgError) {
+        console.error("[WhatsApp Webhook] Error saving message:", msgError);
+      }
 
       // Update conversation
       await supabase
@@ -132,6 +175,7 @@ Deno.serve(async (req) => {
 
       // Check if human mode — don't auto-respond
       if (conversation.status === "waiting_human") {
+        console.log("[WhatsApp Webhook] Conversation in human mode, skipping AI response");
         return new Response(JSON.stringify({ status: "human mode" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -143,6 +187,8 @@ Deno.serve(async (req) => {
           (typeof company.business_hours === "object" &&
             company.business_hours?.offlineMessage) ||
           "Estamos fora do horário de atendimento. Retornaremos em breve!";
+
+        console.log("[WhatsApp Webhook] Outside business hours, sending offline message");
 
         await sendWhatsAppMessage(company, customerPhone, offlineMsg);
         await supabase.from("messages").insert({
@@ -161,38 +207,52 @@ Deno.serve(async (req) => {
       }
 
       // Get conversation history (last 20 messages for context)
-      const { data: history } = await supabase
+      const { data: history, error: historyError } = await supabase
         .from("messages")
         .select("role, content")
         .eq("conversation_id", conversation.id)
         .order("created_at", { ascending: true })
         .limit(20);
 
+      if (historyError) {
+        console.error("[WhatsApp Webhook] Error fetching history:", historyError);
+      }
+
       // Get products for context
-      const { data: products } = await supabase
+      const { data: products, error: productsError } = await supabase
         .from("products")
         .select("name, description, price, pix_link, card_link")
         .eq("company_id", company.id)
         .eq("active", true);
+
+      if (productsError) {
+        console.error("[WhatsApp Webhook] Error fetching products:", productsError);
+      }
 
       // Build AI prompt
       const systemPrompt = buildSystemPrompt(company, products || []);
       const aiMessages = [
         { role: "system", content: systemPrompt },
         ...(history || []).map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content })),
+        { role: "user", content: messageText },
       ];
 
       // Call OpenAI
       const openaiKey = company.openai_key;
       if (!openaiKey) {
         const fallback = "Desculpe, nosso atendimento automático está temporariamente indisponível. Um atendente entrará em contato em breve.";
+        console.warn("[WhatsApp Webhook] No OpenAI key configured");
+
         await sendWhatsAppMessage(company, customerPhone, fallback);
         await supabase.from("messages").insert({ conversation_id: conversation.id, role: "assistant", content: fallback });
         await supabase.from("conversations").update({ last_message: fallback, last_message_at: new Date().toISOString() }).eq("id", conversation.id);
+
         return new Response(JSON.stringify({ status: "no openai key" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      console.log("[WhatsApp Webhook] Calling OpenAI API");
 
       const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -201,7 +261,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-4o-mini",
           messages: aiMessages,
           max_tokens: 500,
           temperature: 0.7,
@@ -209,23 +269,28 @@ Deno.serve(async (req) => {
       });
 
       if (!aiResponse.ok) {
-        console.error("OpenAI error:", await aiResponse.text());
-        throw new Error("OpenAI API error");
+        const errText = await aiResponse.text();
+        console.error("[WhatsApp Webhook] OpenAI error:", errText);
+        throw new Error(`OpenAI API error: ${aiResponse.status}`);
       }
 
       const aiData = await aiResponse.json();
       let reply = aiData.choices?.[0]?.message?.content || "Desculpe, não entendi. Pode reformular?";
 
+      console.log("[WhatsApp Webhook] AI response generated:", reply.substring(0, 50));
+
       // Detect checkout intent
       if (reply.includes("[CHECKOUT]")) {
         reply = reply.replace("[CHECKOUT]", "").trim();
+        console.log("[WhatsApp Webhook] Checkout intent detected");
+
         // Try to create order from context
         if (products && products.length > 0) {
           const matchedProduct = products.find((p: any) =>
             messageText.toLowerCase().includes(p.name.toLowerCase())
           ) || products[0];
 
-          await supabase.from("orders").insert({
+          const { error: orderError } = await supabase.from("orders").insert({
             company_id: company.id,
             conversation_id: conversation.id,
             customer_name: customerName,
@@ -234,11 +299,19 @@ Deno.serve(async (req) => {
             product_id: undefined,
             payment_status: "pending",
           });
+
+          if (orderError) {
+            console.error("[WhatsApp Webhook] Error creating order:", orderError);
+          }
         }
       }
 
       // Send AI reply via WhatsApp
-      await sendWhatsAppMessage(company, customerPhone, reply);
+      const sendResult = await sendWhatsAppMessage(company, customerPhone, reply);
+
+      if (!sendResult.ok) {
+        console.error("[WhatsApp Webhook] Failed to send WhatsApp message");
+      }
 
       // Save AI reply
       await supabase.from("messages").insert({
@@ -252,11 +325,13 @@ Deno.serve(async (req) => {
         .update({ last_message: reply, last_message_at: new Date().toISOString() })
         .eq("id", conversation.id);
 
+      console.log("[WhatsApp Webhook] Message processed successfully");
+
       return new Response(JSON.stringify({ status: "ok" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (err) {
-      console.error("Webhook error:", err);
+      console.error("[WhatsApp Webhook] Error:", err);
       return new Response(JSON.stringify({ error: String(err) }), {
         status: 200, // Return 200 to Meta to avoid retries
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -286,9 +361,12 @@ async function sendWhatsAppMessage(company: any, to: string, text: string) {
       }),
     }
   );
+
   if (!res.ok) {
-    console.error("WhatsApp send error:", await res.text());
+    const errText = await res.text();
+    console.error("[WhatsApp API] Send error:", errText);
   }
+
   return res;
 }
 
