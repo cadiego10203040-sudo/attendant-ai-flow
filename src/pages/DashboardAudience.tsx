@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 type Contact = { phone: string; name: string; totalConversations: number; lastOrderStatus: string; lastContact: string; };
 
@@ -101,7 +102,19 @@ const DashboardAudience = () => {
         <Dialog open={msgOpen} onOpenChange={setMsgOpen}>
           <DialogContent><DialogHeader><DialogTitle>Enviar mensagem para {msgPhone}</DialogTitle></DialogHeader>
             <Textarea rows={4} value={msgText} onChange={e => setMsgText(e.target.value)} placeholder="Sua mensagem..." />
-            <Button className="w-full" onClick={() => { setMsgOpen(false); setMsgText(""); }}>Enviar</Button>
+            <Button className="w-full" onClick={async () => {
+              if (!company || !msgText.trim()) return;
+              try {
+                const { error } = await supabase.functions.invoke("send-message", {
+                  body: { company_id: company.id, phone: msgPhone, message: msgText },
+                });
+                if (error) throw error;
+                toast({ title: "Mensagem enviada!" });
+              } catch (err: any) {
+                toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
+              }
+              setMsgOpen(false); setMsgText("");
+            }}>Enviar</Button>
           </DialogContent>
         </Dialog>
       </div>

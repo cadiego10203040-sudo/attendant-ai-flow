@@ -96,6 +96,20 @@ const DashboardBroadcast = () => {
               </div>
               <div className="mt-3 flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => duplicate(b)}><Copy className="mr-1 h-3 w-3" /> Duplicar</Button>
+                {b.status === "draft" && (
+                  <Button size="sm" onClick={async () => {
+                    try {
+                      const { error } = await supabase.functions.invoke("send-broadcast", { body: { broadcast_id: b.id } });
+                      if (error) throw error;
+                      toast({ title: "Transmissão enviada!" });
+                      fetchBroadcasts();
+                    } catch (err: any) {
+                      toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
+                    }
+                  }}>
+                    <Send className="mr-1 h-3 w-3" /> Enviar Agora
+                  </Button>
+                )}
               </div>
             </motion.div>
           ))}

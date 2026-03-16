@@ -73,9 +73,26 @@ const DashboardConversations = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!humanMessage.trim() || !selectedId) return;
-    await supabase.from("messages").insert({ conversation_id: selectedId, role: "assistant", content: humanMessage });
-    await supabase.from("conversations").update({ last_message: humanMessage, last_message_at: new Date().toISOString() }).eq("id", selectedId);
+    if (!humanMessage.trim() || !selectedId || !company) return;
+    const conv = conversations.find(c => c.id === selectedId);
+    if (!conv) return;
+    
+    try {
+      const { error } = await supabase.functions.invoke("send-message", {
+        body: {
+          company_id: company.id,
+          phone: conv.customer_phone,
+          message: humanMessage,
+          conversation_id: selectedId,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      // Fallback: save locally even if WhatsApp send fails
+      await supabase.from("messages").insert({ conversation_id: selectedId, role: "assistant", content: humanMessage });
+      await supabase.from("conversations").update({ last_message: humanMessage, last_message_at: new Date().toISOString() }).eq("id", selectedId);
+      toast({ title: "Mensagem salva", description: "Não foi possível enviar via WhatsApp. A mensagem foi salva localmente.", variant: "destructive" });
+    }
     setHumanMessage("");
     fetchMessages(selectedId);
   };
