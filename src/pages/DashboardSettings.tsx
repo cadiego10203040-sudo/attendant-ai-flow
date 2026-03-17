@@ -23,10 +23,14 @@ const DashboardSettings = () => {
   const [segment, setSegment] = useState("");
   const [language, setLanguage] = useState("");
   const [aiInstructions, setAiInstructions] = useState("");
+  const [trainingInstructions, setTrainingInstructions] = useState("");
   const [objections, setObjections] = useState("");
   const [escalation, setEscalation] = useState("");
   const [hours, setHours] = useState("");
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [whatsappToken, setWhatsappToken] = useState("");
+  const [whatsappPhoneId, setWhatsappPhoneId] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
