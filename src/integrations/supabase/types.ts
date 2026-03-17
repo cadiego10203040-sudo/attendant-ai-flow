@@ -77,6 +77,7 @@ export type Database = {
           objections: string | null
           openai_key: string | null
           segment: string | null
+          training_instructions: string | null
           updated_at: string
           user_id: string
           webhook_url: string | null
@@ -99,6 +100,7 @@ export type Database = {
           objections?: string | null
           openai_key?: string | null
           segment?: string | null
+          training_instructions?: string | null
           updated_at?: string
           user_id: string
           webhook_url?: string | null
@@ -121,6 +123,7 @@ export type Database = {
           objections?: string | null
           openai_key?: string | null
           segment?: string | null
+          training_instructions?: string | null
           updated_at?: string
           user_id?: string
           webhook_url?: string | null

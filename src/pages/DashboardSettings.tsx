@@ -23,10 +23,14 @@ const DashboardSettings = () => {
   const [segment, setSegment] = useState("");
   const [language, setLanguage] = useState("");
   const [aiInstructions, setAiInstructions] = useState("");
+  const [trainingInstructions, setTrainingInstructions] = useState("");
   const [objections, setObjections] = useState("");
   const [escalation, setEscalation] = useState("");
   const [hours, setHours] = useState("");
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [whatsappToken, setWhatsappToken] = useState("");
+  const [whatsappPhoneId, setWhatsappPhoneId] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -34,12 +38,15 @@ const DashboardSettings = () => {
     setName(company.name);
     setSegment(company.segment);
     setLanguage(company.language);
-    setAiInstructions(company.ai_instructions);
-    setObjections(company.objections);
-    setEscalation(company.escalation_rules);
+    setAiInstructions(company.ai_instructions || "");
+    setTrainingInstructions((company as any).training_instructions || "");
+    setObjections(company.objections || "");
+    setEscalation(company.escalation_rules || "");
     setHours(typeof company.business_hours === "string" ? company.business_hours : JSON.stringify(company.business_hours));
     setCustomerWhatsapp(company.customer_whatsapp || "");
-
+    setOpenaiKey(company.openai_key || "");
+    setWhatsappToken(company.whatsapp_token || "");
+    setWhatsappPhoneId(company.whatsapp_phone_id || "");
     supabase.from("products").select("*").eq("company_id", company.id).then(({ data }) => {
       if (data) setProducts(data.map(p => ({ id: p.id, name: p.name, description: p.description || "", price: String(p.price || 0), card_link: p.card_link || "", pix_link: p.pix_link || "" })));
     });
@@ -47,7 +54,7 @@ const DashboardSettings = () => {
 
   const handleSave = () => execute(async () => {
     const c = await ensureCompany();
-    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours, customer_whatsapp: customerWhatsapp } as any).eq("id", c.id);
+    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, training_instructions: trainingInstructions, objections, escalation_rules: escalation, business_hours: hours, customer_whatsapp: customerWhatsapp, openai_key: openaiKey, whatsapp_token: whatsappToken, whatsapp_phone_id: whatsappPhoneId } as any).eq("id", c.id);
     if (error) throw error;
 
     for (const p of products) {
@@ -80,7 +87,7 @@ const DashboardSettings = () => {
         </div>
 
         <Tabs defaultValue="company">
-          <TabsList><TabsTrigger value="company">Empresa</TabsTrigger><TabsTrigger value="products">Produtos</TabsTrigger><TabsTrigger value="ai">IA</TabsTrigger></TabsList>
+          <TabsList><TabsTrigger value="company">Empresa</TabsTrigger><TabsTrigger value="products">Produtos</TabsTrigger><TabsTrigger value="ai">IA</TabsTrigger><TabsTrigger value="integrations">Integrações</TabsTrigger></TabsList>
 
           <TabsContent value="company">
             <motion.div className="mt-4 space-y-4 rounded-xl border border-border bg-card p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -131,7 +138,17 @@ const DashboardSettings = () => {
               <div className="space-y-2"><Label>Instruções para a IA</Label><Textarea rows={5} value={aiInstructions} onChange={e => setAiInstructions(e.target.value)} /></div>
               <div className="space-y-2"><Label>Objeções e Respostas</Label><Textarea rows={3} value={objections} onChange={e => setObjections(e.target.value)} /></div>
               <div className="space-y-2"><Label>Horário de Atendimento</Label><Input value={hours} onChange={e => setHours(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Treinamento da IA</Label><Textarea rows={6} placeholder="Cole aqui o treinamento completo do seu bot..." value={trainingInstructions} onChange={e => setTrainingInstructions(e.target.value)} /><p className="text-xs text-muted-foreground">Este campo será usado como training_instructions pelo seu bot</p></div>
               <div className="space-y-2"><Label>Quando escalar para humano</Label><Textarea rows={2} value={escalation} onChange={e => setEscalation(e.target.value)} /></div>
+            </motion.div>
+          </TabsContent>
+
+          <TabsContent value="integrations">
+            <motion.div className="mt-4 space-y-4 rounded-xl border border-border bg-card p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <h3 className="font-heading text-lg font-semibold text-card-foreground">🔑 Chaves de API</h3>
+              <div className="space-y-2"><Label>Chave da API OpenAI</Label><Input type="password" placeholder="sk-..." value={openaiKey} onChange={e => setOpenaiKey(e.target.value)} /></div>
+              <div className="space-y-2"><Label>WhatsApp Phone ID</Label><Input placeholder="Ex: 123456789012345" value={whatsappPhoneId} onChange={e => setWhatsappPhoneId(e.target.value)} /></div>
+              <div className="space-y-2"><Label>WhatsApp Access Token</Label><Input type="password" placeholder="EAAxxxxx..." value={whatsappToken} onChange={e => setWhatsappToken(e.target.value)} /></div>
             </motion.div>
           </TabsContent>
         </Tabs>
