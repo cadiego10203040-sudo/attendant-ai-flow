@@ -54,7 +54,7 @@ const DashboardSettings = () => {
 
   const handleSave = () => execute(async () => {
     const c = await ensureCompany();
-    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, objections, escalation_rules: escalation, business_hours: hours, customer_whatsapp: customerWhatsapp } as any).eq("id", c.id);
+    const { error } = await supabase.from("companies").update({ name, segment, language, ai_instructions: aiInstructions, training_instructions: trainingInstructions, objections, escalation_rules: escalation, business_hours: hours, customer_whatsapp: customerWhatsapp, openai_key: openaiKey, whatsapp_token: whatsappToken, whatsapp_phone_id: whatsappPhoneId } as any).eq("id", c.id);
     if (error) throw error;
 
     for (const p of products) {
