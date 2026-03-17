@@ -38,12 +38,15 @@ const DashboardSettings = () => {
     setName(company.name);
     setSegment(company.segment);
     setLanguage(company.language);
-    setAiInstructions(company.ai_instructions);
-    setObjections(company.objections);
-    setEscalation(company.escalation_rules);
+    setAiInstructions(company.ai_instructions || "");
+    setTrainingInstructions((company as any).training_instructions || "");
+    setObjections(company.objections || "");
+    setEscalation(company.escalation_rules || "");
     setHours(typeof company.business_hours === "string" ? company.business_hours : JSON.stringify(company.business_hours));
     setCustomerWhatsapp(company.customer_whatsapp || "");
-
+    setOpenaiKey(company.openai_key || "");
+    setWhatsappToken(company.whatsapp_token || "");
+    setWhatsappPhoneId(company.whatsapp_phone_id || "");
     supabase.from("products").select("*").eq("company_id", company.id).then(({ data }) => {
       if (data) setProducts(data.map(p => ({ id: p.id, name: p.name, description: p.description || "", price: String(p.price || 0), card_link: p.card_link || "", pix_link: p.pix_link || "" })));
     });
