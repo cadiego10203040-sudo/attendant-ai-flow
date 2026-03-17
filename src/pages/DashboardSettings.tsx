@@ -87,7 +87,7 @@ const DashboardSettings = () => {
         </div>
 
         <Tabs defaultValue="company">
-          <TabsList><TabsTrigger value="company">Empresa</TabsTrigger><TabsTrigger value="products">Produtos</TabsTrigger><TabsTrigger value="ai">IA</TabsTrigger></TabsList>
+          <TabsList><TabsTrigger value="company">Empresa</TabsTrigger><TabsTrigger value="products">Produtos</TabsTrigger><TabsTrigger value="ai">IA</TabsTrigger><TabsTrigger value="integrations">Integrações</TabsTrigger></TabsList>
 
           <TabsContent value="company">
             <motion.div className="mt-4 space-y-4 rounded-xl border border-border bg-card p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
