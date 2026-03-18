@@ -30,11 +30,11 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     };
     fetchCounts();
 
-    const channel = supabase.channel("sidebar-counts")
+    const channel = externalSupabase.channel("sidebar-counts")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { externalSupabase.removeChannel(channel); };
   }, [company]);
 
   const navGroups: NavGroup[] = [

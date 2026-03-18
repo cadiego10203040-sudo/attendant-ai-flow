@@ -27,7 +27,7 @@ const DashboardAILive = () => {
   }, [company]);
 
   const pauseAI = async (id: string) => {
-    await supabase.from("conversations").update({ status: "waiting_human" }).eq("id", id);
+    await externalSupabase.from("conversations").update({ status: "waiting_human" }).eq("id", id);
   };
 
   return (
