@@ -31,7 +31,6 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
     const channel = externalSupabase.channel("sidebar-counts")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
       .subscribe();
     return () => { externalSupabase.removeChannel(channel); };
   }, [company]);
