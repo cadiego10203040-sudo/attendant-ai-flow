@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase } from "@/integrations/supabase/externalClient";
 
 type Conversation = { id: string; customer_phone: string; customer_name: string; status: string; last_message: string; last_message_at: string; };
 

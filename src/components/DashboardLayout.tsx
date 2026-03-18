@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase } from "@/integrations/supabase/externalClient";
 
 type NavItem = { emoji: string; label: string; path?: string; badge?: number; badgeColor?: string };
 type NavGroup = { title: string; items: NavItem[] };
