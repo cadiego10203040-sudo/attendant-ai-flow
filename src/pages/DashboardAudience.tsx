@@ -26,20 +26,24 @@ const DashboardAudience = () => {
   useEffect(() => {
     if (!company) return;
     const fetchContacts = async () => {
-      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at, last_message_at").eq("company_id", company.id);
-      const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
+      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at").eq("company_id", company.id);
+      let ordersArr: any[] = [];
+      try {
+        const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
+        ordersArr = orders || [];
+      } catch {}
 
       const phoneMap = new Map<string, Contact>();
-      (convs || []).forEach(c => {
+      (convs || []).forEach((c: any) => {
         const existing = phoneMap.get(c.customer_phone);
         if (existing) {
           existing.totalConversations++;
-          if (c.last_message_at > existing.lastContact) existing.lastContact = c.last_message_at;
+          if (c.created_at > existing.lastContact) existing.lastContact = c.created_at;
         } else {
-          phoneMap.set(c.customer_phone, { phone: c.customer_phone, name: c.customer_name || "", totalConversations: 1, lastOrderStatus: "", lastContact: c.last_message_at || c.created_at });
+          phoneMap.set(c.customer_phone, { phone: c.customer_phone, name: c.customer_name || "", totalConversations: 1, lastOrderStatus: "", lastContact: c.created_at });
         }
       });
-      (orders || []).forEach(o => {
+      (ordersArr).forEach((o: any) => {
         const existing = phoneMap.get(o.customer_phone);
         if (existing) existing.lastOrderStatus = o.payment_status;
       });

@@ -28,11 +28,15 @@ const DashboardMetrics = () => {
       else since.setMonth(now.getMonth() - 1);
 
       const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", since.toISOString());
-      const { data: ordersData } = await externalSupabase.from("orders").select("*").eq("company_id", company.id).gte("created_at", since.toISOString());
-      const orders = ordersData || [];
+      // orders/products tables may not exist in external DB
+      let orders: any[] = [];
+      try {
+        const { data: ordersData } = await externalSupabase.from("orders").select("*").eq("company_id", company.id).gte("created_at", since.toISOString());
+        orders = ordersData || [];
+      } catch {}
       const paid = orders.filter(o => o.payment_status === "paid");
       const abandoned = orders.filter(o => o.payment_status === "abandoned");
-      const revenue = paid.reduce((s, o) => s + (o.amount || 0), 0);
+      const revenue = paid.reduce((s: number, o: any) => s + (o.amount || 0), 0);
 
       setStats({
         conversations: convCount || 0,
@@ -42,17 +46,17 @@ const DashboardMetrics = () => {
         avgResponseTime: "< 3s",
       });
 
-      // Pie chart data
       const pix = orders.filter(o => o.payment_method === "pix").length;
       const card = orders.filter(o => o.payment_method === "card").length;
       setPaymentMethods([{ name: "PIX", value: pix }, { name: "Cartão", value: card }]);
 
-      // Sales by product (simplified)
-      const { data: products } = await externalSupabase.from("products").select("id, name").eq("company_id", company.id);
-      if (products) {
-        const byProduct = products.map(p => ({ product: p.name, vendas: paid.filter(o => o.product_id === p.id).length }));
-        setSalesByProduct(byProduct);
-      }
+      try {
+        const { data: products } = await externalSupabase.from("products").select("id, name").eq("company_id", company.id);
+        if (products) {
+          const byProduct = products.map(p => ({ product: p.name, vendas: paid.filter(o => o.product_id === p.id).length }));
+          setSalesByProduct(byProduct);
+        }
+      } catch {}
 
       // Conversations per day (last 7 days)
       const days = [];

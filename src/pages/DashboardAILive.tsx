@@ -7,7 +7,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
 
-type Conversation = { id: string; customer_phone: string; customer_name: string; status: string; last_message: string; last_message_at: string; };
+type Conversation = { id: string; customer_phone: string; customer_name: string; status: string; last_message: string; last_message_at: string; created_at: string; };
 
 const DashboardAILive = () => {
   const { company } = useCompany();
@@ -17,7 +17,7 @@ const DashboardAILive = () => {
   useEffect(() => {
     if (!company) return;
     const fetch = async () => {
-      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", company.id).eq("status", "open").order("last_message_at", { ascending: false });
+      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", company.id).eq("status", "open").order("created_at", { ascending: false });
       setConversations((data as Conversation[]) || []);
       setLoading(false);
     };
@@ -42,7 +42,7 @@ const DashboardAILive = () => {
             <motion.div key={c.id} className="rounded-xl border border-border bg-card p-5 space-y-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10"><Bot className="h-5 w-5 text-primary" /></div>
-                <div><p className="text-sm font-medium text-card-foreground">{c.customer_name || c.customer_phone}</p><p className="text-xs text-muted-foreground">Última atividade: {new Date(c.last_message_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p></div>
+                <div><p className="text-sm font-medium text-card-foreground">{c.customer_name || c.customer_phone}</p><p className="text-xs text-muted-foreground">Última atividade: {new Date(c.last_message_at || c.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p></div>
               </div>
               <p className="text-xs text-muted-foreground truncate">{c.last_message}</p>
               <div className="flex gap-2">

@@ -25,7 +25,7 @@ const DashboardConversations = () => {
 
   const fetchConversations = useCallback(async () => {
     if (!company) return;
-    let query = externalSupabase.from("conversations").select("*").eq("company_id", company.id).order("last_message_at", { ascending: false });
+    let query = externalSupabase.from("conversations").select("*").eq("company_id", company.id).order("created_at", { ascending: false });
     if (filter !== "all") query = query.eq("status", filter);
     const { data } = await query;
     setConversations((data as Conversation[]) || []);
@@ -91,7 +91,7 @@ const DashboardConversations = () => {
     } catch (err: any) {
       // Fallback: save locally even if WhatsApp send fails
       await externalSupabase.from("messages").insert({ conversation_id: selectedId, role: "assistant", content: humanMessage });
-      await externalSupabase.from("conversations").update({ last_message: humanMessage, last_message_at: new Date().toISOString() }).eq("id", selectedId);
+      await externalSupabase.from("conversations").update({ last_message: humanMessage }).eq("id", selectedId);
       toast({ title: "Mensagem salva", description: "Não foi possível enviar via WhatsApp. A mensagem foi salva localmente.", variant: "destructive" });
     }
     setHumanMessage("");
