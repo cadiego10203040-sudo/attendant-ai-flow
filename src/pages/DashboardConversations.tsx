@@ -43,7 +43,7 @@ const DashboardConversations = () => {
   }, [company, fetchConversations]);
 
   const fetchMessages = useCallback(async (convId: string) => {
-    const { data } = await supabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: true });
+    const { data } = await externalSupabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: true });
     setMessages((data as Message[]) || []);
   }, []);
 
