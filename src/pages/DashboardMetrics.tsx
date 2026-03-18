@@ -48,7 +48,7 @@ const DashboardMetrics = () => {
       setPaymentMethods([{ name: "PIX", value: pix }, { name: "Cartão", value: card }]);
 
       // Sales by product (simplified)
-      const { data: products } = await supabase.from("products").select("id, name").eq("company_id", company.id);
+      const { data: products } = await externalSupabase.from("products").select("id, name").eq("company_id", company.id);
       if (products) {
         const byProduct = products.map(p => ({ product: p.name, vendas: paid.filter(o => o.product_id === p.id).length }));
         setSalesByProduct(byProduct);
