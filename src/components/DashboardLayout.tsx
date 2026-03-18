@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
+import { useExternalCompany } from "@/hooks/useExternalCompany";
 
 type NavItem = { emoji: string; label: string; path?: string; badge?: number; badgeColor?: string };
 type NavGroup = { title: string; items: NavItem[] };
@@ -15,25 +16,27 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openConvos, setOpenConvos] = useState(0);
   const [paidOrders, setPaidOrders] = useState(0);
 
   useEffect(() => {
-    if (!company) return;
+    if (!externalCompanyId) return;
     const fetchCounts = async () => {
-      const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "open");
-      setOpenConvos(convCount || 0);
-      // orders table doesn't exist in external DB
+      // Fetch all conversations and count open ones client-side (status column may not exist)
+      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", externalCompanyId);
+      const openCount = ((data as any[]) || []).filter(c => c.status === "open").length;
+      setOpenConvos(openCount);
       setPaidOrders(0);
     };
     fetchCounts();
 
     const channel = externalSupabase.channel("sidebar-counts")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${externalCompanyId}` }, () => fetchCounts())
       .subscribe();
     return () => { externalSupabase.removeChannel(channel); };
-  }, [company]);
+  }, [externalCompanyId]);
 
   const navGroups: NavGroup[] = [
     {

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
+import { useExternalCompany } from "@/hooks/useExternalCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
 import { toast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ type Message = { id: string; role: string; content: string; created_at: string; 
 
 const DashboardConversations = () => {
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -24,23 +26,24 @@ const DashboardConversations = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchConversations = useCallback(async () => {
-    if (!company) return;
-    let query = externalSupabase.from("conversations").select("*").eq("company_id", company.id).order("created_at", { ascending: false });
-    if (filter !== "all") query = query.eq("status", filter);
-    const { data } = await query;
-    setConversations((data as Conversation[]) || []);
+    if (!externalCompanyId) return;
+    const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", externalCompanyId).order("created_at", { ascending: false });
+    const allConvs = (data as Conversation[]) || [];
+    // Client-side filter since external DB may not have status column
+    const filtered = filter === "all" ? allConvs : allConvs.filter(c => c.status === filter);
+    setConversations(filtered);
     setLoading(false);
-  }, [company, filter]);
+  }, [externalCompanyId, filter]);
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
 
   useEffect(() => {
-    if (!company) return;
+    if (!externalCompanyId) return;
     const channel = externalSupabase.channel("conversations-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchConversations())
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${externalCompanyId}` }, () => fetchConversations())
       .subscribe();
     return () => { externalSupabase.removeChannel(channel); };
-  }, [company, fetchConversations]);
+  }, [externalCompanyId, fetchConversations]);
 
   const fetchMessages = useCallback(async (convId: string) => {
     const { data } = await externalSupabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: true });

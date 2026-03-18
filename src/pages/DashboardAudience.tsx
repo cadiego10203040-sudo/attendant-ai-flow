@@ -9,12 +9,14 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
+import { useExternalCompany } from "@/hooks/useExternalCompany";
 import { toast } from "@/hooks/use-toast";
 
 type Contact = { phone: string; name: string; totalConversations: number; lastOrderStatus: string; lastContact: string; };
 
 const DashboardAudience = () => {
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -24,12 +26,12 @@ const DashboardAudience = () => {
   const [msgText, setMsgText] = useState("");
 
   useEffect(() => {
-    if (!company) return;
+    if (!externalCompanyId) return;
     const fetchContacts = async () => {
-      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at").eq("company_id", company.id);
+      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at").eq("company_id", externalCompanyId);
       let ordersArr: any[] = [];
       try {
-        const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
+        const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", externalCompanyId);
         ordersArr = orders || [];
       } catch {}
 

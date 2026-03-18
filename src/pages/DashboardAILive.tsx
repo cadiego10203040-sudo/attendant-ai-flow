@@ -4,6 +4,7 @@ import { Bot, Eye, Pause, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
+import { useExternalCompany } from "@/hooks/useExternalCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
 
@@ -11,18 +12,20 @@ type Conversation = { id: string; customer_phone: string; customer_name: string;
 
 const DashboardAILive = () => {
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!company) return;
-    const fetch = async () => {
-      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", company.id).eq("status", "open").order("created_at", { ascending: false });
-      setConversations((data as Conversation[]) || []);
+    if (!externalCompanyId) return;
+    const fetchData = async () => {
+      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", externalCompanyId).order("created_at", { ascending: false });
+      const openConvs = ((data as Conversation[]) || []).filter(c => c.status === "open");
+      setConversations(openConvs);
       setLoading(false);
     };
-    fetch();
-    const channel = externalSupabase.channel("ai-live").on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetch()).subscribe();
+    fetchData();
+    const channel = externalSupabase.channel("ai-live").on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${externalCompanyId}` }, () => fetchData()).subscribe();
     return () => { externalSupabase.removeChannel(channel); };
   }, [company]);
 

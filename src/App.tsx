@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CompanyProvider } from "@/hooks/useCompany";
+import { ExternalCompanyProvider } from "@/hooks/useExternalCompany";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -40,6 +41,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <CompanyProvider>
+          <ExternalCompanyProvider>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
@@ -65,6 +67,7 @@ const App = () => (
               <Route path="/exclusao-dados" element={<DataDeletion />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+          </ExternalCompanyProvider>
           </CompanyProvider>
         </AuthProvider>
       </BrowserRouter>
