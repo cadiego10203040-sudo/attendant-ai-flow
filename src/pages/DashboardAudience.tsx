@@ -26,9 +26,9 @@ const DashboardAudience = () => {
   const [msgText, setMsgText] = useState("");
 
   useEffect(() => {
-    if (!company) return;
+    if (!externalCompanyId) return;
     const fetchContacts = async () => {
-      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at").eq("company_id", company.id);
+      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at").eq("company_id", externalCompanyId);
       let ordersArr: any[] = [];
       try {
         const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
