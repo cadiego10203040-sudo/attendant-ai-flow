@@ -73,7 +73,7 @@ const DashboardMetrics = () => {
       setConvData(days);
     };
     fetchMetrics();
-  }, [company, period]);
+  }, [externalCompanyId, period]);
 
   const statCards = [
     { label: "Conversas", value: stats.conversations.toString(), icon: MessageSquare },
