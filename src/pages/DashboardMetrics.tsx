@@ -7,6 +7,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
+import { useExternalCompany } from "@/hooks/useExternalCompany";
 
 const COLORS = ["hsl(var(--primary))", "#00E5A0", "#FFD93D", "#6C5CE7"];
 
