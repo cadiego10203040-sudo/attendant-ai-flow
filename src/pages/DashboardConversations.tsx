@@ -61,7 +61,7 @@ const DashboardConversations = () => {
     if (!selectedId) return;
     const newMode = !isHumanMode;
     setIsHumanMode(newMode);
-    await supabase.from("conversations").update({ status: newMode ? "waiting_human" : "open" }).eq("id", selectedId);
+    await externalSupabase.from("conversations").update({ status: newMode ? "waiting_human" : "open" }).eq("id", selectedId);
     fetchConversations();
   };
 
