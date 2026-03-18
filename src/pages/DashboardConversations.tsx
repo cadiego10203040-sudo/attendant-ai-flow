@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
+import { useExternalCompany } from "@/hooks/useExternalCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
 import { toast } from "@/hooks/use-toast";
