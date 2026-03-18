@@ -25,7 +25,7 @@ const DashboardConversations = () => {
 
   const fetchConversations = useCallback(async () => {
     if (!company) return;
-    let query = supabase.from("conversations").select("*").eq("company_id", company.id).order("last_message_at", { ascending: false });
+    let query = externalSupabase.from("conversations").select("*").eq("company_id", company.id).order("last_message_at", { ascending: false });
     if (filter !== "all") query = query.eq("status", filter);
     const { data } = await query;
     setConversations((data as Conversation[]) || []);
