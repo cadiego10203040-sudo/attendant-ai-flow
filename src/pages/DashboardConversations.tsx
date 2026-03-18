@@ -67,7 +67,7 @@ const DashboardConversations = () => {
 
   const handleClose = async () => {
     if (!selectedId) return;
-    await supabase.from("conversations").update({ status: "closed" }).eq("id", selectedId);
+    await externalSupabase.from("conversations").update({ status: "closed" }).eq("id", selectedId);
     setSelectedId(null);
     fetchConversations();
   };
