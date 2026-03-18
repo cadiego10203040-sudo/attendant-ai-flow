@@ -22,10 +22,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!company) return;
     const fetchCounts = async () => {
-      const { count: convCount } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "open");
+      const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "open");
       setOpenConvos(convCount || 0);
       const today = new Date(); today.setHours(0,0,0,0);
-      const { count: orderCount } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("payment_status", "paid").gte("created_at", today.toISOString());
+      const { count: orderCount } = await externalSupabase.from("orders").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("payment_status", "paid").gte("created_at", today.toISOString());
       setPaidOrders(orderCount || 0);
     };
     fetchCounts();
