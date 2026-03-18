@@ -31,7 +31,7 @@ const DashboardAudience = () => {
       const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at").eq("company_id", externalCompanyId);
       let ordersArr: any[] = [];
       try {
-        const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
+        const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", externalCompanyId);
         ordersArr = orders || [];
       } catch {}
 
