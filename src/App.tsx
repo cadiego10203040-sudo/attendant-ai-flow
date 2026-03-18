@@ -67,6 +67,7 @@ const App = () => (
               <Route path="/exclusao-dados" element={<DataDeletion />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+          </ExternalCompanyProvider>
           </CompanyProvider>
         </AuthProvider>
       </BrowserRouter>
