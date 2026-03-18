@@ -26,13 +26,14 @@ const DashboardConversations = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchConversations = useCallback(async () => {
-    if (!company) return;
-    let query = externalSupabase.from("conversations").select("*").eq("company_id", company.id).order("created_at", { ascending: false });
-    if (filter !== "all") query = query.eq("status", filter);
-    const { data } = await query;
-    setConversations((data as Conversation[]) || []);
+    if (!externalCompanyId) return;
+    const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", externalCompanyId).order("created_at", { ascending: false });
+    const allConvs = (data as Conversation[]) || [];
+    // Client-side filter since external DB may not have status column
+    const filtered = filter === "all" ? allConvs : allConvs.filter(c => c.status === filter);
+    setConversations(filtered);
     setLoading(false);
-  }, [company, filter]);
+  }, [externalCompanyId, filter]);
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
 
