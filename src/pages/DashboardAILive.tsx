@@ -22,8 +22,8 @@ const DashboardAILive = () => {
       setLoading(false);
     };
     fetch();
-    const channel = supabase.channel("ai-live").on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetch()).subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const channel = externalSupabase.channel("ai-live").on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetch()).subscribe();
+    return () => { externalSupabase.removeChannel(channel); };
   }, [company]);
 
   const pauseAI = async (id: string) => {
