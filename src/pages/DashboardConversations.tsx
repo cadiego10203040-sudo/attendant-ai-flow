@@ -15,6 +15,7 @@ type Message = { id: string; role: string; content: string; created_at: string; 
 
 const DashboardConversations = () => {
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
