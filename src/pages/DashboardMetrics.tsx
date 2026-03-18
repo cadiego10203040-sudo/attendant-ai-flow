@@ -61,7 +61,7 @@ const DashboardMetrics = () => {
         const dayStr = d.toLocaleDateString("pt-BR", { weekday: "short" });
         const start = new Date(d); start.setHours(0,0,0,0);
         const end = new Date(d); end.setHours(23,59,59,999);
-        const { count } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+        const { count } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
         days.push({ day: dayStr, conversas: count || 0 });
       }
       setConvData(days);
