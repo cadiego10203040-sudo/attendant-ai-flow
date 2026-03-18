@@ -17,7 +17,7 @@ const DashboardAILive = () => {
   useEffect(() => {
     if (!company) return;
     const fetch = async () => {
-      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", company.id).eq("status", "open").order("last_message_at", { ascending: false });
+      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", company.id).eq("status", "open").order("created_at", { ascending: false });
       setConversations((data as Conversation[]) || []);
       setLoading(false);
     };
