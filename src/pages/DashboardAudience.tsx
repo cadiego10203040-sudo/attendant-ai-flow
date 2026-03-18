@@ -26,8 +26,12 @@ const DashboardAudience = () => {
   useEffect(() => {
     if (!company) return;
     const fetchContacts = async () => {
-      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at, last_message_at").eq("company_id", company.id);
-      const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
+      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at").eq("company_id", company.id);
+      let ordersArr: any[] = [];
+      try {
+        const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
+        ordersArr = orders || [];
+      } catch {}
 
       const phoneMap = new Map<string, Contact>();
       (convs || []).forEach(c => {
