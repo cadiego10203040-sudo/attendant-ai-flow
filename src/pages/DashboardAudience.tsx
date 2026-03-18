@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase } from "@/integrations/supabase/externalClient";
 import { toast } from "@/hooks/use-toast";
 
 type Contact = { phone: string; name: string; totalConversations: number; lastOrderStatus: string; lastContact: string; };
@@ -25,8 +26,8 @@ const DashboardAudience = () => {
   useEffect(() => {
     if (!company) return;
     const fetchContacts = async () => {
-      const { data: convs } = await supabase.from("conversations").select("customer_phone, customer_name, created_at, last_message_at").eq("company_id", company.id);
-      const { data: orders } = await supabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
+      const { data: convs } = await externalSupabase.from("conversations").select("customer_phone, customer_name, created_at, last_message_at").eq("company_id", company.id);
+      const { data: orders } = await externalSupabase.from("orders").select("customer_phone, payment_status").eq("company_id", company.id);
 
       const phoneMap = new Map<string, Contact>();
       (convs || []).forEach(c => {

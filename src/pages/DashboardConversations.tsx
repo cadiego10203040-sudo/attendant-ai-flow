@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase } from "@/integrations/supabase/externalClient";
 import { toast } from "@/hooks/use-toast";
 
 type Conversation = { id: string; customer_phone: string; customer_name: string; status: string; last_message: string; last_message_at: string; };
@@ -24,7 +25,7 @@ const DashboardConversations = () => {
 
   const fetchConversations = useCallback(async () => {
     if (!company) return;
-    let query = supabase.from("conversations").select("*").eq("company_id", company.id).order("last_message_at", { ascending: false });
+    let query = externalSupabase.from("conversations").select("*").eq("company_id", company.id).order("last_message_at", { ascending: false });
     if (filter !== "all") query = query.eq("status", filter);
     const { data } = await query;
     setConversations((data as Conversation[]) || []);
@@ -35,14 +36,14 @@ const DashboardConversations = () => {
 
   useEffect(() => {
     if (!company) return;
-    const channel = supabase.channel("conversations-realtime")
+    const channel = externalSupabase.channel("conversations-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchConversations())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { externalSupabase.removeChannel(channel); };
   }, [company, fetchConversations]);
 
   const fetchMessages = useCallback(async (convId: string) => {
-    const { data } = await supabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: true });
+    const { data } = await externalSupabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: true });
     setMessages((data as Message[]) || []);
   }, []);
 
@@ -50,23 +51,23 @@ const DashboardConversations = () => {
 
   useEffect(() => {
     if (!selectedId) return;
-    const channel = supabase.channel("messages-realtime")
+    const channel = externalSupabase.channel("messages-realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, () => fetchMessages(selectedId))
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { externalSupabase.removeChannel(channel); };
   }, [selectedId, fetchMessages]);
 
   const handleAssume = async () => {
     if (!selectedId) return;
     const newMode = !isHumanMode;
     setIsHumanMode(newMode);
-    await supabase.from("conversations").update({ status: newMode ? "waiting_human" : "open" }).eq("id", selectedId);
+    await externalSupabase.from("conversations").update({ status: newMode ? "waiting_human" : "open" }).eq("id", selectedId);
     fetchConversations();
   };
 
   const handleClose = async () => {
     if (!selectedId) return;
-    await supabase.from("conversations").update({ status: "closed" }).eq("id", selectedId);
+    await externalSupabase.from("conversations").update({ status: "closed" }).eq("id", selectedId);
     setSelectedId(null);
     fetchConversations();
   };
@@ -89,8 +90,8 @@ const DashboardConversations = () => {
       if (error) throw error;
     } catch (err: any) {
       // Fallback: save locally even if WhatsApp send fails
-      await supabase.from("messages").insert({ conversation_id: selectedId, role: "assistant", content: humanMessage });
-      await supabase.from("conversations").update({ last_message: humanMessage, last_message_at: new Date().toISOString() }).eq("id", selectedId);
+      await externalSupabase.from("messages").insert({ conversation_id: selectedId, role: "assistant", content: humanMessage });
+      await externalSupabase.from("conversations").update({ last_message: humanMessage, last_message_at: new Date().toISOString() }).eq("id", selectedId);
       toast({ title: "Mensagem salva", description: "Não foi possível enviar via WhatsApp. A mensagem foi salva localmente.", variant: "destructive" });
     }
     setHumanMessage("");

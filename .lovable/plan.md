@@ -1,67 +1,76 @@
 
 
-## Plano: Corrigir Build + Conectar ao Supabase Externo
+## Plan: Visual Overhaul -- Dark Theme + Orange Accent + Plus Jakarta Sans + Expanded Sidebar
 
-### Problema
+This plan covers purely visual/CSS changes across the project. No logic, routes, or functionality will be modified.
 
-Dois problemas distintos:
-1. **Build quebrado**: Pacotes Radix UI, recharts, react-query e supabase-js estão com versões que puxam tipos do React 19, incompatíveis com React 18
-2. **Dashboard não mostra conversas**: O frontend lê do projeto Lovable Cloud (`axrjtmmchgzcuswmhmzm`), mas as mensagens do WhatsApp estão no projeto externo (`yrdsfqlhdsuhxjyugepd`)
+### Technical Details
 
-### Ações
+The changes span these files:
 
-**1. Corrigir build — pinar TODAS as dependências problemáticas**
+**1. `index.html`** -- Replace Google Fonts import link to load Plus Jakarta Sans (weights 400-800).
 
-O problema persiste porque os pacotes Radix UI (ex: `@radix-ui/react-dialog@^1.1.14`) estão em versões que dependem de `@types/react@^19`. Precisamos:
+**2. `src/index.css`** -- Complete CSS variable overhaul:
+- Font import: `Plus Jakarta Sans` (400,500,600,700,800)
+- `--font-heading` and `--font-body` both set to `'Plus Jakarta Sans'`
+- `:root` variables updated to new dark palette:
+  - `--background`: `#0C0E13`
+  - `--foreground`: `#E8EEFF`
+  - `--card`: `#161A24`
+  - `--card-foreground`: `#E8EEFF`
+  - `--popover`: `#161A24`
+  - `--popover-foreground`: `#E8EEFF`
+  - `--primary`: `#FF6B2B` (orange)
+  - `--primary-foreground`: `#FFFFFF`
+  - `--secondary`: `#1C2130`
+  - `--secondary-foreground`: `#E8EEFF`
+  - `--muted`: `#1C2130`
+  - `--muted-foreground`: `#6B7A99`
+  - `--accent`: `#1C2130`
+  - `--accent-foreground`: `#FF6B2B`
+  - `--destructive`: stays red-ish
+  - `--border`: `#252D3D`
+  - `--input`: `#1C2130`
+  - `--ring`: `#FF6B2B`
+  - `--radius`: `0.875rem` (14px)
+  - Sidebar vars: background `#0F1118`, border `#252D3D`, primary `#FF6B2B`
+  - Custom tokens: `--hero-gradient` updated to orange gradient, `--shadow-glow` to orange glow
+- Remove `.dark` block (everything is dark by default now)
+- Update utility classes for new gradient/glow
 
-- Pinar todos os Radix UI para versões compatíveis com React 18 (série `1.0.x` / `1.1.x` mais antiga)
-- Alternativa mais simples: adicionar `"overrides"` no `package.json` para forçar `@types/react` e `@types/react-dom` em todo o dependency tree:
+**3. `tailwind.config.ts`** -- Update font families to `'Plus Jakarta Sans'`.
 
-```json
-"overrides": {
-  "@types/react": "18.3.11",
-  "@types/react-dom": "18.3.1"
-}
-```
+**4. `src/components/ui/input.tsx`** -- Update default classes for new input styling: `bg-[#1C2130]`, `border-[#252D3D]`, `text-[#E8EEFF]`, `placeholder:text-[#3A4560]`, `rounded-[10px]`, `focus-visible:ring-[#FF6B2B]`, padding `py-3 px-4`.
 
-Isso resolve todos os erros de tipo de uma vez (chart.tsx, sheet.tsx, input-otp.tsx, sidebar.tsx, useAuth.tsx, DashboardMetrics.tsx).
+**5. `src/components/ui/button.tsx`** -- Update `buttonVariants`:
+  - `default`: `bg-[#FF6B2B] text-white rounded-[9px] font-bold hover:bg-[#E8521A]`
+  - `outline`/`secondary`: transparent + border `#252D3D`, text `#6B7A99`, hover border/text `#FF6B2B`
 
-**2. Criar cliente Supabase externo**
+**6. `src/components/ui/card.tsx`** -- Update Card base: `rounded-[14px] border-[#252D3D] bg-[#161A24] shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[#FF6B2B30]`.
 
-Criar `src/integrations/supabase/externalClient.ts` — um segundo cliente Supabase apontando para `https://yrdsfqlhdsuhxjyugepd.supabase.co` com a anon key desse projeto.
+**7. `src/components/DashboardLayout.tsx`** -- Expand sidebar with grouped menu items:
+  - ATENDIMENTO: Conversas (with badge), IA ao Vivo, Bate Papo ao Vivo
+  - VENDAS: Pedidos, Metricas, Transmissao, Audiencia
+  - AUTOMACAO: Fluxos de Conversa, Automacao, Etiquetas
+  - CONFIGURACOES: Empresa, Respostas Rapidas, Horarios, Conexoes, API, Configuracoes Gerais
+  - Active item style: `bg-[#FF6B2B18] border-l-3 border-[#FF6B2B] text-[#FF6B2B]`
+  - Hover: `bg-[#1C2130] text-[#E8EEFF]`
+  - Sidebar bg: `#0F1118`, border-right `#252D3D`
+  - Logo icon: gradient orange background with soft glow
+  - Non-active items that have no route yet will just be visual placeholders (no navigation)
 
-Precisarei da **anon key** do projeto `yrdsfqlhdsuhxjyugepd`. Vou perguntar ao usuário se ele ainda não a forneceu.
+**8. All page files** -- Replace any inline `bg-hero-gradient` references to use the updated orange gradient. Replace `font-heading` usage (which will now resolve to Plus Jakarta Sans via tailwind config). No logic changes.
 
-**3. Atualizar `DashboardConversations.tsx`**
+### What stays the same
+- All routes in `App.tsx`
+- All state management, form handlers, mock data
+- All component structure and props
+- All labels, texts, placeholders
 
-Trocar todas as queries de leitura (`conversations`, `messages`) e subscriptions de realtime para usar o cliente externo. Manter o cliente Lovable Cloud para auth e operações administrativas.
-
-**4. Atualizar `DashboardAILive.tsx` e `DashboardLayout.tsx`**
-
-Esses componentes também fazem queries em `conversations` — precisam usar o cliente externo para mostrar dados corretos.
-
-### Detalhe técnico
-
-```text
-┌─────────────────┐     ┌──────────────────────┐
-│  Auth / Company  │────▶│  Lovable Cloud       │
-│  (login, config) │     │  axrjtmmchgzcuswmhmzm│
-└─────────────────┘     └──────────────────────┘
-
-┌─────────────────┐     ┌──────────────────────┐
-│  Conversations   │────▶│  Supabase Externo    │
-│  Messages, AI    │     │  yrdsfqlhdsuhxjyugepd│
-└─────────────────┘     └──────────────────────┘
-```
-
-### Pré-requisito
-
-Preciso da **anon key** do projeto Supabase externo (`yrdsfqlhdsuhxjyugepd`). Vou solicitá-la antes de implementar.
-
-### Resultado
-
-- Build corrigido e funcionando
-- Dashboard lendo conversas e mensagens do projeto externo
-- Realtime ativo no projeto externo
-- Novas mensagens aparecem em tempo real
+### Summary of visual changes
+- Font: Plus Jakarta Sans everywhere
+- Dark background with orange (#FF6B2B) accents
+- Expanded sidebar with grouped navigation items
+- Updated card, input, and button component styles
+- Consistent dark theme across all pages
 

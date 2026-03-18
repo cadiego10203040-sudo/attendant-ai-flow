@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase } from "@/integrations/supabase/externalClient";
 
 const COLORS = ["hsl(var(--primary))", "#00E5A0", "#FFD93D", "#6C5CE7"];
 
@@ -26,8 +27,8 @@ const DashboardMetrics = () => {
       else if (period === "week") since.setDate(now.getDate() - 7);
       else since.setMonth(now.getMonth() - 1);
 
-      const { count: convCount } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", since.toISOString());
-      const { data: ordersData } = await supabase.from("orders").select("*").eq("company_id", company.id).gte("created_at", since.toISOString());
+      const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", since.toISOString());
+      const { data: ordersData } = await externalSupabase.from("orders").select("*").eq("company_id", company.id).gte("created_at", since.toISOString());
       const orders = ordersData || [];
       const paid = orders.filter(o => o.payment_status === "paid");
       const abandoned = orders.filter(o => o.payment_status === "abandoned");
@@ -47,7 +48,7 @@ const DashboardMetrics = () => {
       setPaymentMethods([{ name: "PIX", value: pix }, { name: "Cartão", value: card }]);
 
       // Sales by product (simplified)
-      const { data: products } = await supabase.from("products").select("id, name").eq("company_id", company.id);
+      const { data: products } = await externalSupabase.from("products").select("id, name").eq("company_id", company.id);
       if (products) {
         const byProduct = products.map(p => ({ product: p.name, vendas: paid.filter(o => o.product_id === p.id).length }));
         setSalesByProduct(byProduct);
@@ -60,7 +61,7 @@ const DashboardMetrics = () => {
         const dayStr = d.toLocaleDateString("pt-BR", { weekday: "short" });
         const start = new Date(d); start.setHours(0,0,0,0);
         const end = new Date(d); end.setHours(23,59,59,999);
-        const { count } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+        const { count } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
         days.push({ day: dayStr, conversas: count || 0 });
       }
       setConvData(days);

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase } from "@/integrations/supabase/externalClient";
 
 type Conversation = { id: string; customer_phone: string; customer_name: string; status: string; last_message: string; last_message_at: string; };
 
@@ -16,17 +17,17 @@ const DashboardAILive = () => {
   useEffect(() => {
     if (!company) return;
     const fetch = async () => {
-      const { data } = await supabase.from("conversations").select("*").eq("company_id", company.id).eq("status", "open").order("last_message_at", { ascending: false });
+      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", company.id).eq("status", "open").order("last_message_at", { ascending: false });
       setConversations((data as Conversation[]) || []);
       setLoading(false);
     };
     fetch();
-    const channel = supabase.channel("ai-live").on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetch()).subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const channel = externalSupabase.channel("ai-live").on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetch()).subscribe();
+    return () => { externalSupabase.removeChannel(channel); };
   }, [company]);
 
   const pauseAI = async (id: string) => {
-    await supabase.from("conversations").update({ status: "waiting_human" }).eq("id", id);
+    await externalSupabase.from("conversations").update({ status: "waiting_human" }).eq("id", id);
   };
 
   return (

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
+import { externalSupabase } from "@/integrations/supabase/externalClient";
 
 type NavItem = { emoji: string; label: string; path?: string; badge?: number; badgeColor?: string };
 type NavGroup = { title: string; items: NavItem[] };
@@ -21,19 +22,19 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!company) return;
     const fetchCounts = async () => {
-      const { count: convCount } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "open");
+      const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "open");
       setOpenConvos(convCount || 0);
       const today = new Date(); today.setHours(0,0,0,0);
-      const { count: orderCount } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("payment_status", "paid").gte("created_at", today.toISOString());
+      const { count: orderCount } = await externalSupabase.from("orders").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("payment_status", "paid").gte("created_at", today.toISOString());
       setPaidOrders(orderCount || 0);
     };
     fetchCounts();
 
-    const channel = supabase.channel("sidebar-counts")
+    const channel = externalSupabase.channel("sidebar-counts")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { externalSupabase.removeChannel(channel); };
   }, [company]);
 
   const navGroups: NavGroup[] = [
