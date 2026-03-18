@@ -24,9 +24,8 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     const fetchCounts = async () => {
       const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "open");
       setOpenConvos(convCount || 0);
-      const today = new Date(); today.setHours(0,0,0,0);
-      const { count: orderCount } = await externalSupabase.from("orders").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("payment_status", "paid").gte("created_at", today.toISOString());
-      setPaidOrders(orderCount || 0);
+      // orders table doesn't exist in external DB
+      setPaidOrders(0);
     };
     fetchCounts();
 
