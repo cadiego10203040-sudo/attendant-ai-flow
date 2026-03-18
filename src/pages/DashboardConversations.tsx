@@ -91,7 +91,7 @@ const DashboardConversations = () => {
     } catch (err: any) {
       // Fallback: save locally even if WhatsApp send fails
       await externalSupabase.from("messages").insert({ conversation_id: selectedId, role: "assistant", content: humanMessage });
-      await externalSupabase.from("conversations").update({ last_message: humanMessage, last_message_at: new Date().toISOString() }).eq("id", selectedId);
+      await externalSupabase.from("conversations").update({ last_message: humanMessage }).eq("id", selectedId);
       toast({ title: "Mensagem salva", description: "Não foi possível enviar via WhatsApp. A mensagem foi salva localmente.", variant: "destructive" });
     }
     setHumanMessage("");
