@@ -27,8 +27,8 @@ const DashboardMetrics = () => {
       else if (period === "week") since.setDate(now.getDate() - 7);
       else since.setMonth(now.getMonth() - 1);
 
-      const { count: convCount } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", since.toISOString());
-      const { data: ordersData } = await supabase.from("orders").select("*").eq("company_id", company.id).gte("created_at", since.toISOString());
+      const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).gte("created_at", since.toISOString());
+      const { data: ordersData } = await externalSupabase.from("orders").select("*").eq("company_id", company.id).gte("created_at", since.toISOString());
       const orders = ordersData || [];
       const paid = orders.filter(o => o.payment_status === "paid");
       const abandoned = orders.filter(o => o.payment_status === "abandoned");
