@@ -13,6 +13,7 @@ const COLORS = ["hsl(var(--primary))", "#00E5A0", "#FFD93D", "#6C5CE7"];
 
 const DashboardMetrics = () => {
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [period, setPeriod] = useState("week");
   const [stats, setStats] = useState({ conversations: 0, revenue: 0, conversionRate: 0, abandonedRate: 0, avgResponseTime: "< 3s" });
   const [convData, setConvData] = useState<any[]>([]);
