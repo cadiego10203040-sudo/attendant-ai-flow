@@ -16,6 +16,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openConvos, setOpenConvos] = useState(0);
   const [paidOrders, setPaidOrders] = useState(0);
