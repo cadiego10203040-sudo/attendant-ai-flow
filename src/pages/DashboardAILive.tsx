@@ -12,6 +12,7 @@ type Conversation = { id: string; customer_phone: string; customer_name: string;
 
 const DashboardAILive = () => {
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
