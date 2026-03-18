@@ -38,12 +38,12 @@ const DashboardConversations = () => {
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
 
   useEffect(() => {
-    if (!company) return;
+    if (!externalCompanyId) return;
     const channel = externalSupabase.channel("conversations-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchConversations())
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${externalCompanyId}` }, () => fetchConversations())
       .subscribe();
     return () => { externalSupabase.removeChannel(channel); };
-  }, [company, fetchConversations]);
+  }, [externalCompanyId, fetchConversations]);
 
   const fetchMessages = useCallback(async (convId: string) => {
     const { data } = await externalSupabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: true });
