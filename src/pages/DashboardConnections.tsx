@@ -25,7 +25,7 @@ const DashboardConnections = () => {
     setPhoneId(company.whatsapp_phone_id || "");
     setToken(company.whatsapp_token || "");
     setVerifyToken(company.whatsapp_verify_token || "");
-    setWebhookUrl(company.webhook_url || "");
+    setWebhookUrl(company.webhook_url || "https://yrdsfqlhdsuhxjyugepd.supabase.co/functions/v1/whatsapp");
     setConnected(!!company.whatsapp_phone_id && !!company.whatsapp_token);
   }, [company]);
 

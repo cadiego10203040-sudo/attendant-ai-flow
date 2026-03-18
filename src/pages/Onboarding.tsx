@@ -45,10 +45,7 @@ const Onboarding = () => {
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState(() => {
-    const projectId = import.meta.env.VITE_SUPABASE_URL?.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'axrjtmmchgzcuswmhmzm';
-    return `https://${projectId}.supabase.co/functions/v1/whatsapp-webhook`;
-  });
+  const [webhookUrl, setWebhookUrl] = useState("https://yrdsfqlhdsuhxjyugepd.supabase.co/functions/v1/whatsapp");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<null | boolean>(null);
 
