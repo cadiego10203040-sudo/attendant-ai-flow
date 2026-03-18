@@ -21,7 +21,7 @@ const DashboardMetrics = () => {
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!company) return;
+    if (!externalCompanyId) return;
     const fetchMetrics = async () => {
       const now = new Date();
       let since = new Date();
