@@ -22,20 +22,21 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const [paidOrders, setPaidOrders] = useState(0);
 
   useEffect(() => {
-    if (!company) return;
+    if (!externalCompanyId) return;
     const fetchCounts = async () => {
-      const { count: convCount } = await externalSupabase.from("conversations").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "open");
-      setOpenConvos(convCount || 0);
-      // orders table doesn't exist in external DB
+      // Fetch all conversations and count open ones client-side (status column may not exist)
+      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", externalCompanyId);
+      const openCount = ((data as any[]) || []).filter(c => c.status === "open").length;
+      setOpenConvos(openCount);
       setPaidOrders(0);
     };
     fetchCounts();
 
     const channel = externalSupabase.channel("sidebar-counts")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchCounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${externalCompanyId}` }, () => fetchCounts())
       .subscribe();
     return () => { externalSupabase.removeChannel(channel); };
-  }, [company]);
+  }, [externalCompanyId]);
 
   const navGroups: NavGroup[] = [
     {
