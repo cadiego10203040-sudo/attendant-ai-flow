@@ -9,6 +9,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
+import { useExternalCompany } from "@/hooks/useExternalCompany";
 import { toast } from "@/hooks/use-toast";
 
 type Contact = { phone: string; name: string; totalConversations: number; lastOrderStatus: string; lastContact: string; };
