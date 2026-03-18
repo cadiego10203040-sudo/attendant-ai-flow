@@ -16,6 +16,7 @@ type Contact = { phone: string; name: string; totalConversations: number; lastOr
 
 const DashboardAudience = () => {
   const { company } = useCompany();
+  const { externalCompanyId } = useExternalCompany();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
