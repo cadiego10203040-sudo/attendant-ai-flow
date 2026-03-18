@@ -36,10 +36,10 @@ const DashboardConversations = () => {
 
   useEffect(() => {
     if (!company) return;
-    const channel = supabase.channel("conversations-realtime")
+    const channel = externalSupabase.channel("conversations-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${company.id}` }, () => fetchConversations())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { externalSupabase.removeChannel(channel); };
   }, [company, fetchConversations]);
 
   const fetchMessages = useCallback(async (convId: string) => {
