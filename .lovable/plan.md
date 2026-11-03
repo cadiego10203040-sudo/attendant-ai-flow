@@ -1,76 +1,39 @@
+## O que falta para o AtendIA ficar pronto e funcionando
 
+### Situação hoje
+- Telas, login e configurações: prontos.
+- Conversas do WhatsApp já aparecem no painel (lidas do seu banco externo `yrdsfqlhdsuhxjyugepd`).
+- **Não funciona ainda:** botão "Assumir", "Pausar IA", "IA ao Vivo" atualizando sozinho e envio de mensagem manual aparecendo no chat.
 
-## Plan: Visual Overhaul -- Dark Theme + Orange Accent + Plus Jakarta Sans + Expanded Sidebar
+### Por que não funciona
+1. A tabela `conversations` do banco externo **não tem a coluna `status`** — então "Assumir/Pausar/Fechar" não têm onde salvar, e o bot não sabe que um humano assumiu.
+2. "IA ao Vivo" espera a empresa errada carregar e nunca atualiza.
+3. Ao enviar mensagem manual, ela chega no WhatsApp mas falha ao salvar (procura a conversa no banco errado), então não aparece no chat.
+4. Os erros são escondidos — o botão parece funcionar mas não faz nada.
+5. "Bate Papo ao Vivo" é só uma página de aviso.
 
-This plan covers purely visual/CSS changes across the project. No logic, routes, or functionality will be modified.
+### Etapa 1 — No seu banco externo (você roda no SQL Editor dele)
+```sql
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS status text DEFAULT 'open';
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_message text;
+ALTER PUBLICATION supabase_realtime ADD TABLE conversations, messages;
+```
+Mais permissões de leitura/escrita para `conversations` e `messages` (vou te passar o SQL pronto).
+E a função `whatsapp` do bot externo precisa **não responder quando `status = 'waiting_human'`** (vou te passar o trecho).
 
-### Technical Details
+### Etapa 2 — No painel (eu faço)
+- **Conversas:** Assumir/Fechar só mudam se salvar de verdade; mostrar erro claro se falhar; mensagem manual enviada pelo WhatsApp e gravada no banco externo, aparecendo na hora; trava contra clique duplo.
+- **IA ao Vivo:** corrigir carregamento, atualizar em tempo real + checagem a cada 5s como reserva, "Pausar IA" com confirmação.
+- **Bate Papo ao Vivo:** virar lista real das conversas em que um humano assumiu, com chat para responder.
+- **Contadores da barra lateral:** não quebrar quando faltar dado.
+- Aviso na tela quando a empresa não for encontrada no banco externo (Phone Number ID diferente).
 
-The changes span these files:
+### Etapa 3 — Teste completo
+Abrir conversa → Assumir → enviar mensagem → conferir no WhatsApp → atualizar página e ver estado mantido → IA ao Vivo atualizando com nova mensagem.
 
-**1. `index.html`** -- Replace Google Fonts import link to load Plus Jakarta Sans (weights 400-800).
-
-**2. `src/index.css`** -- Complete CSS variable overhaul:
-- Font import: `Plus Jakarta Sans` (400,500,600,700,800)
-- `--font-heading` and `--font-body` both set to `'Plus Jakarta Sans'`
-- `:root` variables updated to new dark palette:
-  - `--background`: `#0C0E13`
-  - `--foreground`: `#E8EEFF`
-  - `--card`: `#161A24`
-  - `--card-foreground`: `#E8EEFF`
-  - `--popover`: `#161A24`
-  - `--popover-foreground`: `#E8EEFF`
-  - `--primary`: `#FF6B2B` (orange)
-  - `--primary-foreground`: `#FFFFFF`
-  - `--secondary`: `#1C2130`
-  - `--secondary-foreground`: `#E8EEFF`
-  - `--muted`: `#1C2130`
-  - `--muted-foreground`: `#6B7A99`
-  - `--accent`: `#1C2130`
-  - `--accent-foreground`: `#FF6B2B`
-  - `--destructive`: stays red-ish
-  - `--border`: `#252D3D`
-  - `--input`: `#1C2130`
-  - `--ring`: `#FF6B2B`
-  - `--radius`: `0.875rem` (14px)
-  - Sidebar vars: background `#0F1118`, border `#252D3D`, primary `#FF6B2B`
-  - Custom tokens: `--hero-gradient` updated to orange gradient, `--shadow-glow` to orange glow
-- Remove `.dark` block (everything is dark by default now)
-- Update utility classes for new gradient/glow
-
-**3. `tailwind.config.ts`** -- Update font families to `'Plus Jakarta Sans'`.
-
-**4. `src/components/ui/input.tsx`** -- Update default classes for new input styling: `bg-[#1C2130]`, `border-[#252D3D]`, `text-[#E8EEFF]`, `placeholder:text-[#3A4560]`, `rounded-[10px]`, `focus-visible:ring-[#FF6B2B]`, padding `py-3 px-4`.
-
-**5. `src/components/ui/button.tsx`** -- Update `buttonVariants`:
-  - `default`: `bg-[#FF6B2B] text-white rounded-[9px] font-bold hover:bg-[#E8521A]`
-  - `outline`/`secondary`: transparent + border `#252D3D`, text `#6B7A99`, hover border/text `#FF6B2B`
-
-**6. `src/components/ui/card.tsx`** -- Update Card base: `rounded-[14px] border-[#252D3D] bg-[#161A24] shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[#FF6B2B30]`.
-
-**7. `src/components/DashboardLayout.tsx`** -- Expand sidebar with grouped menu items:
-  - ATENDIMENTO: Conversas (with badge), IA ao Vivo, Bate Papo ao Vivo
-  - VENDAS: Pedidos, Metricas, Transmissao, Audiencia
-  - AUTOMACAO: Fluxos de Conversa, Automacao, Etiquetas
-  - CONFIGURACOES: Empresa, Respostas Rapidas, Horarios, Conexoes, API, Configuracoes Gerais
-  - Active item style: `bg-[#FF6B2B18] border-l-3 border-[#FF6B2B] text-[#FF6B2B]`
-  - Hover: `bg-[#1C2130] text-[#E8EEFF]`
-  - Sidebar bg: `#0F1118`, border-right `#252D3D`
-  - Logo icon: gradient orange background with soft glow
-  - Non-active items that have no route yet will just be visual placeholders (no navigation)
-
-**8. All page files** -- Replace any inline `bg-hero-gradient` references to use the updated orange gradient. Replace `font-heading` usage (which will now resolve to Plus Jakarta Sans via tailwind config). No logic changes.
-
-### What stays the same
-- All routes in `App.tsx`
-- All state management, form handlers, mock data
-- All component structure and props
-- All labels, texts, placeholders
-
-### Summary of visual changes
-- Font: Plus Jakarta Sans everywhere
-- Dark background with orange (#FF6B2B) accents
-- Expanded sidebar with grouped navigation items
-- Updated card, input, and button component styles
-- Consistent dark theme across all pages
-
+### Detalhes técnicos
+- `DashboardAILive.tsx`: deps `[externalCompanyId]`, `useCallback`, polling, `status ?? 'open'`.
+- `DashboardConversations.tsx`: checar `error` nos updates; `send-message` sem `conversation_id` (evita FK local) e insert em `externalSupabase.messages`.
+- `DashboardLiveChat.tsx`: reaproveitar lógica filtrando `waiting_human`.
+- `useExternalCompany.tsx`: expor `notFound`/erro.
+- Pendente com você: rodar o SQL no banco externo e ajustar a função `whatsapp` de lá — sem isso o "Assumir" não pausa o bot.
