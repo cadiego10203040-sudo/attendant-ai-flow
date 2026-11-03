@@ -1,36 +1,51 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Bot, Eye, Pause, MessageSquare } from "lucide-react";
+import { Bot, Eye, Pause, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
-import { useCompany } from "@/hooks/useCompany";
 import { useExternalCompany } from "@/hooks/useExternalCompany";
-import { supabase } from "@/integrations/supabase/client";
 import { externalSupabase } from "@/integrations/supabase/externalClient";
+import { toast } from "@/hooks/use-toast";
 
-type Conversation = { id: string; customer_phone: string; customer_name: string; status: string; last_message: string; last_message_at: string; created_at: string; };
+type Conversation = { id: string; customer_phone: string; customer_name?: string; status?: string | null; last_message?: string; created_at: string; };
 
 const DashboardAILive = () => {
-  const { company } = useCompany();
-  const { externalCompanyId } = useExternalCompany();
+  const navigate = useNavigate();
+  const { externalCompanyId, loading: extLoading } = useExternalCompany();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pausing, setPausing] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!externalCompanyId) { setLoading(false); return; }
+    const { data, error } = await externalSupabase.from("conversations").select("*").eq("company_id", externalCompanyId).order("created_at", { ascending: false });
+    if (error) console.error("[ai-live]", error);
+    setConversations(((data as Conversation[]) || []).filter(c => (c.status || "open") === "open"));
+    setLoading(false);
+  }, [externalCompanyId]);
 
   useEffect(() => {
-    if (!externalCompanyId) return;
-    const fetchData = async () => {
-      const { data } = await externalSupabase.from("conversations").select("*").eq("company_id", externalCompanyId).order("created_at", { ascending: false });
-      const openConvs = ((data as Conversation[]) || []).filter(c => c.status === "open");
-      setConversations(openConvs);
-      setLoading(false);
-    };
+    if (extLoading) return;
     fetchData();
-    const channel = externalSupabase.channel("ai-live").on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${externalCompanyId}` }, () => fetchData()).subscribe();
-    return () => { externalSupabase.removeChannel(channel); };
-  }, [company]);
+    if (!externalCompanyId) return;
+    const channel = externalSupabase.channel("ai-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `company_id=eq.${externalCompanyId}` }, () => fetchData())
+      .subscribe();
+    const poll = setInterval(fetchData, 5000);
+    return () => { externalSupabase.removeChannel(channel); clearInterval(poll); };
+  }, [externalCompanyId, extLoading, fetchData]);
 
   const pauseAI = async (id: string) => {
-    await externalSupabase.from("conversations").update({ status: "waiting_human" }).eq("id", id);
+    setPausing(id);
+    const { error } = await externalSupabase.from("conversations").update({ status: "waiting_human" }).eq("id", id);
+    setPausing(null);
+    if (error) {
+      toast({ title: "Não foi possível pausar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "IA pausada", description: "A conversa foi para Bate Papo ao Vivo." });
+    fetchData();
   };
 
   return (
@@ -45,12 +60,14 @@ const DashboardAILive = () => {
             <motion.div key={c.id} className="rounded-xl border border-border bg-card p-5 space-y-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10"><Bot className="h-5 w-5 text-primary" /></div>
-                <div><p className="text-sm font-medium text-card-foreground">{c.customer_name || c.customer_phone}</p><p className="text-xs text-muted-foreground">Última atividade: {new Date(c.last_message_at || c.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p></div>
+                <div><p className="text-sm font-medium text-card-foreground">{c.customer_name || c.customer_phone}</p><p className="text-xs text-muted-foreground">Início: {new Date(c.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</p></div>
               </div>
-              <p className="text-xs text-muted-foreground truncate">{c.last_message}</p>
+              <p className="text-xs text-muted-foreground truncate">{c.last_message || "Sem mensagens"}</p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.location.href = "/dashboard"}><Eye className="mr-1 h-3 w-3" /> Ver</Button>
-                <Button variant="outline" size="sm" onClick={() => pauseAI(c.id)}><Pause className="mr-1 h-3 w-3" /> Pausar IA</Button>
+                <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}><Eye className="mr-1 h-3 w-3" /> Ver</Button>
+                <Button variant="outline" size="sm" disabled={pausing === c.id} onClick={() => pauseAI(c.id)}>
+                  {pausing === c.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Pause className="mr-1 h-3 w-3" />} Pausar IA
+                </Button>
               </div>
             </motion.div>
           ))}
