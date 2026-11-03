@@ -1,53 +1,39 @@
+## O que falta para o AtendIA ficar pronto e funcionando
 
-Objetivo: corrigir os dois problemas reportados no dashboard: (1) “assumir conversa” falhando/sem efeito visível e (2) “IA ao vivo” não atualizando.
+### Situação hoje
+- Telas, login e configurações: prontos.
+- Conversas do WhatsApp já aparecem no painel (lidas do seu banco externo `yrdsfqlhdsuhxjyugepd`).
+- **Não funciona ainda:** botão "Assumir", "Pausar IA", "IA ao Vivo" atualizando sozinho e envio de mensagem manual aparecendo no chat.
 
-Diagnóstico já confirmado (com base no código + logs):
-1) `DashboardAILive.tsx` tem dependência errada no `useEffect` (`[company]`), mas usa `externalCompanyId`. Isso pode impedir carregamento/atualização quando o ID externo chega depois.
-2) Logs da função `send-message` mostram erro de FK ao salvar mensagem com `conversation_id` externo na base local:
-- `messages_conversation_id_fkey` violada (conversation não existe localmente).
-- A mensagem é enviada ao WhatsApp com sucesso, mas a persistência local falha; no painel externo o usuário pode não ver feedback imediato e parecer que “não funcionou”.
-3) `handleAssume`/`pauseAI` atualizam `status` sem tratar erro. Se a atualização falhar (RLS/schema externo), a UI pode aparentar sucesso sem realmente pausar IA.
-4) O “ao vivo” depende de realtime; se o projeto externo não estiver com realtime/publication ideal, o feed fica parado.
+### Por que não funciona
+1. A tabela `conversations` do banco externo **não tem a coluna `status`** — então "Assumir/Pausar/Fechar" não têm onde salvar, e o bot não sabe que um humano assumiu.
+2. "IA ao Vivo" espera a empresa errada carregar e nunca atualiza.
+3. Ao enviar mensagem manual, ela chega no WhatsApp mas falha ao salvar (procura a conversa no banco errado), então não aparece no chat.
+4. Os erros são escondidos — o botão parece funcionar mas não faz nada.
+5. "Bate Papo ao Vivo" é só uma página de aviso.
 
-Plano de implementação (arquivos):
-1) `src/pages/DashboardAILive.tsx`
-- Corrigir dependências para usar `externalCompanyId`.
-- Extrair `fetchData` com `useCallback`.
-- Tornar filtro robusto: tratar `status` ausente como “open” para não zerar lista indevidamente.
-- Adicionar fallback de polling (ex.: 5s) além do realtime.
-- Tratar erros de query/update com `toast` claro.
+### Etapa 1 — No seu banco externo (você roda no SQL Editor dele)
+```sql
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS status text DEFAULT 'open';
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_message text;
+ALTER PUBLICATION supabase_realtime ADD TABLE conversations, messages;
+```
+Mais permissões de leitura/escrita para `conversations` e `messages` (vou te passar o SQL pronto).
+E a função `whatsapp` do bot externo precisa **não responder quando `status = 'waiting_human'`** (vou te passar o trecho).
 
-2) `src/pages/DashboardConversations.tsx`
-- Em `handleAssume` e `handleClose`: validar retorno da atualização (`error`), só mudar estado local quando sucesso; em erro, mostrar toast e manter estado anterior.
-- Em `handleSendMessage`:
-  - parar de enviar `conversation_id` para `send-message` (evita erro FK local),
-  - após sucesso, inserir mensagem no banco externo (`messages`) e atualizar `last_message` da conversa externa para feedback imediato no painel,
-  - adicionar estado `sending` para evitar clique duplo.
-- Adicionar fallback de polling para lista de conversas e mensagens quando realtime não chegar.
+### Etapa 2 — No painel (eu faço)
+- **Conversas:** Assumir/Fechar só mudam se salvar de verdade; mostrar erro claro se falhar; mensagem manual enviada pelo WhatsApp e gravada no banco externo, aparecendo na hora; trava contra clique duplo.
+- **IA ao Vivo:** corrigir carregamento, atualizar em tempo real + checagem a cada 5s como reserva, "Pausar IA" com confirmação.
+- **Bate Papo ao Vivo:** virar lista real das conversas em que um humano assumiu, com chat para responder.
+- **Contadores da barra lateral:** não quebrar quando faltar dado.
+- Aviso na tela quando a empresa não for encontrada no banco externo (Phone Number ID diferente).
 
-3) `src/hooks/useExternalCompany.tsx`
-- Melhorar robustez: tratar `error` do lookup e expor estado claro quando não encontrar mapeamento (em vez de falha silenciosa).
+### Etapa 3 — Teste completo
+Abrir conversa → Assumir → enviar mensagem → conferir no WhatsApp → atualizar página e ver estado mantido → IA ao Vivo atualizando com nova mensagem.
 
-4) (Opcional, mas recomendado) `src/components/DashboardLayout.tsx`
-- Tornar contagem de abertas resiliente (`status` ausente => contabilizar como aberta ou separar “indefinido”).
-- Evitar sensação de painel “parado” quando schema externo variar.
-
-Validação E2E após correção:
-1) Abrir `/dashboard`, selecionar conversa e clicar “Assumir”.
-2) Confirmar badge/estado “Humano atendendo” persistindo após refresh.
-3) Enviar mensagem manual e confirmar:
-- aparece imediatamente no painel,
-- chega no WhatsApp do cliente.
-4) Abrir `/dashboard/ai-live` e confirmar que lista carrega e atualiza (realtime ou polling).
-5) Conferir logs da função `send-message`: não deve mais aparecer erro FK de `conversation_id`.
-
-Risco conhecido (e como tratar):
-- Se o banco externo negar UPDATE/INSERT por política, a UI passará a mostrar erro explícito em vez de “falso sucesso”. Nesse caso, o próximo passo é ajustar permissões no backend externo para `conversations.status` e `messages`.
-
-Sem migração de banco local necessária para esta correção; é ajuste de fluxo/front e tratamento de persistência entre base local e base externa.
-
-<lov-actions>
-<lov-suggestion message="Teste o fluxo completo ponta a ponta: assumir conversa, enviar mensagem manual e verificar atualização em /dashboard e /dashboard/ai-live.">Verificar que funciona end-to-end</lov-suggestion>
-<lov-suggestion message="Adicionar um painel de diagnóstico de sincronização (status de realtime, último polling, último erro de update/insert externo) para facilitar suporte.">Adicionar diagnóstico de sincronização</lov-suggestion>
-<lov-suggestion message="Atualizar também DashboardOrders e DashboardBroadcast para usar a mesma estratégia resiliente (realtime + polling + tratamento explícito de erros externos).">Padronizar resiliência nos outros módulos</lov-suggestion>
-</lov-actions>
+### Detalhes técnicos
+- `DashboardAILive.tsx`: deps `[externalCompanyId]`, `useCallback`, polling, `status ?? 'open'`.
+- `DashboardConversations.tsx`: checar `error` nos updates; `send-message` sem `conversation_id` (evita FK local) e insert em `externalSupabase.messages`.
+- `DashboardLiveChat.tsx`: reaproveitar lógica filtrando `waiting_human`.
+- `useExternalCompany.tsx`: expor `notFound`/erro.
+- Pendente com você: rodar o SQL no banco externo e ajustar a função `whatsapp` de lá — sem isso o "Assumir" não pausa o bot.
